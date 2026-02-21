@@ -1,32 +1,48 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | Crime Hotspot</title>
+    <title>Crime Hotspot | Portal Selection</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
+
 <body>
-    <div class="container">
-        <div class="form-box">
-            <h1>Welcome Back</h1>
-            <p>Enter your credentials to access the Crime Hotspot Dashboard.</p>
-            <form id="loginForm">
-                <div class="input-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" placeholder="Enter your username" required>
+    <div class="landing-container">
+        <header class="landing-header">
+            <h1>Crime Hotspot Portal</h1>
+            <p>Welcome to the analytics dashboard. Please select your access point.</p>
+        </header>
+
+        <div class="selection-grid">
+            <a href="police-login.html" class="selection-card police">
+                <div class="icon-box">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
                 </div>
-                <div class="input-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" placeholder="••••••••" required>
+                <h2>Police Personnel</h2>
+                <p>Secure login for law enforcement officers and administrators.</p>
+                <span class="action-text">Access Portal &rarr;</span>
+            </a>
+
+            <a href="user-login.html" class="selection-card public">
+                <div class="icon-box">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                    </svg>
                 </div>
-                <button type="submit" class="btn">Login</button>
-                <p class="switch-form">Don't have an account? <a href="signup.html">Sign Up</a></p>
-            </form>
-            <div id="message" class="message"></div>
+                <h2>Public User</h2>
+                <p>Login to view hotspots, reports, and community insights.</p>
+                <span class="action-text">Citizen Portal &rarr;</span>
+            </a>
         </div>
     </div>
-    <script src="script.js"></script>
 </body>
+
 </html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Police Login | Crime Hotspot</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <div class="form-box">
+            <div class="back-link"><a href="index.html">&larr; Back to Portal</a></div>
+            <h1>Police Login</h1>
+            <p>Authorized personnel only. Access is monitored and logged.</p>
+            <form id="policeLoginForm">
+                <div class="input-group">
+                    <label for="username">Badge ID / Username</label>
+                    <input type="text" id="username" placeholder="Enter your credentials" required>
+                </div>
+                <div class="input-group">
+                    <label for="password">Secure Password</label>
+                    <input type="password" id="password" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn">Authenticate</button>
+            </form>
+            <div id="message" class="message"></div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>

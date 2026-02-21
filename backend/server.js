@@ -4,16 +4,32 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('./models/User');
+const Police = require('./models/Police');
 require('dotenv').config();
 
 const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({ origin: '*' })); // Allow all origins for local testing
+
+// Request logging middleware
+app.use((req, res, next) => {
+    console.log(`>>> [${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
+    next();
+});
+
+// Process-wide error handlers
+process.on('uncaughtException', (err) => {
+    console.error('FATAL: Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('FATAL: Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 // MongoDB Connection
-const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/capstone";
+const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/capstone";
 mongoose.connect(MONGO_URI)
     .then(() => console.log("Connected to MongoDB ✅"))
     .catch((err) => console.error("MongoDB Connection Error ❌", err));
@@ -35,7 +51,11 @@ app.post("/signup", async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ username, password: hashedPassword });
+        const newUser = new User({
+            username,
+            password: hashedPassword,
+            role: 'user' // Explicitly set role to public user
+        });
         await newUser.save();
 
         console.log("LOG: User created successfully:", username);
@@ -46,9 +66,9 @@ app.post("/signup", async (req, res) => {
     }
 });
 
-// Login Route
-app.post("/login", async (req, res) => {
-    console.log("LOG: Login request for:", req.body.username);
+// User Login Route
+app.post("/user/login", async (req, res) => {
+    console.log("LOG: Public User Login request for:", req.body.username);
     try {
         const { username, password } = req.body;
 
@@ -63,16 +83,44 @@ app.post("/login", async (req, res) => {
         }
 
         const token = jwt.sign(
-            { id: user._id },
+            { id: user._id, role: 'user' },
             process.env.JWT_SECRET || "secret_key",
             { expiresIn: "1h" }
         );
 
-        console.log("LOG: Login successful for:", username);
-        res.status(200).json({ message: "Login successful", token, username: user.username });
+        res.status(200).json({ message: "Login successful", token, username: user.username, role: 'user' });
     } catch (error) {
-        console.error("LOG: Login Error:", error);
+        console.error("LOG: User Login Error:", error);
         res.status(500).json({ message: "Login error", error: error.message });
+    }
+});
+
+// Police Login Route
+app.post("/police/login", async (req, res) => {
+    console.log("LOG: Police Login request for:", req.body.username);
+    try {
+        const { username, password } = req.body;
+
+        const officer = await Police.findOne({ username });
+        if (!officer) {
+            return res.status(400).json({ message: "Access Denied: Invalid Badge ID or Password" });
+        }
+
+        const isMatch = await bcrypt.compare(password, officer.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: "Access Denied: Invalid Badge ID or Password" });
+        }
+
+        const token = jwt.sign(
+            { id: officer._id, role: 'police' },
+            process.env.JWT_SECRET || "secret_key_police",
+            { expiresIn: "1h" }
+        );
+
+        res.status(200).json({ message: "Authentication successful", token, username: officer.username, role: 'police' });
+    } catch (error) {
+        console.error("LOG: Police Login Error:", error);
+        res.status(500).json({ message: "Authentication error", error: error.message });
     }
 });
 
