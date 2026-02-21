@@ -59,7 +59,7 @@ if (loginForm) {
                 localStorage.setItem('username', data.username);
                 showMessage('Login successful! Redirecting...', 'success');
                 // Redirect to main dashboard (assuming it exists or will be created)
-                // setTimeout(() => window.location.href = 'dashboard.html', 1500); 
+                setTimeout(() => window.location.href = 'dashboard.html', 1500);
             } else {
                 showMessage(data.message || 'Invalid credentials', 'error');
             }
