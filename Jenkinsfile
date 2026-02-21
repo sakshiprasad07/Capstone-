@@ -3,7 +3,13 @@ pipeline {
 
     stages {
 
-        stage('Install Backend Dependencies') {
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
             steps {
                 dir('backend') {
                     bat 'npm install'
@@ -11,12 +17,25 @@ pipeline {
             }
         }
 
-        stage('Run Backend') {
+        stage('Run Tests') {
             steps {
-                dir('backend') {
-                    bat 'echo Backend setup complete'
-                }
+                bat 'npm test'
             }
+        }
+
+        stage('Build Application') {
+            steps {
+                bat 'npm run build'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Build Successful 🎉'
+        }
+        failure {
+            echo 'Build Failed ❌'
         }
     }
 }
