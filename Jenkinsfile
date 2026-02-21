@@ -19,23 +19,18 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                bat 'npm test'
+                dir('backend') {
+                    bat 'npm test'
+                }
             }
         }
 
         stage('Build Application') {
             steps {
-                bat 'npm run build'
+                dir('backend') {
+                    bat 'npm run build'
+                }
             }
-        }
-    }
-
-    post {
-        success {
-            echo 'Build Successful 🎉'
-        }
-        failure {
-            echo 'Build Failed ❌'
         }
     }
 }
