@@ -1,21 +1,28 @@
 const express = require('express');
+const path = require('path');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('./models/User');
 const Police = require('./models/Police');
+const { OAuth2Client } = require('google-auth-library');
 require('dotenv').config();
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const app = express();
 
 // Middleware
 app.use(express.json());
 app.use(cors({ origin: '*' })); // Allow all origins for local testing
+app.use(express.static(path.join(__dirname, '../frontend')));
 
-// Request logging middleware
+// Request logging and security headers middleware
 app.use((req, res, next) => {
     console.log(`>>> [${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
+    // Required for Google OAuth popup on some browsers
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
     next();
 });
 
@@ -97,6 +104,7 @@ app.post("/user/login", async (req, res) => {
 
 // Police Login Route
 app.post("/police/login", async (req, res) => {
+    // ... same as before
     console.log("LOG: Police Login request for:", req.body.username);
     try {
         const { username, password } = req.body;
@@ -121,6 +129,57 @@ app.post("/police/login", async (req, res) => {
     } catch (error) {
         console.error("LOG: Police Login Error:", error);
         res.status(500).json({ message: "Authentication error", error: error.message });
+    }
+});
+
+// Google Login/Signup Route
+app.post("/auth/google", async (req, res) => {
+    const { token } = req.body;
+    try {
+        const ticket = await client.verifyIdToken({
+            idToken: token,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+        const { sub: googleId, email, name, picture } = payload;
+
+        let user = await User.findOne({
+            $or: [{ googleId }, { email }]
+        });
+
+        if (!user) {
+            // Create new user if they don't exist
+            user = new User({
+                username: name || email.split('@')[0], // Use name or part of email as username
+                email,
+                googleId,
+                role: 'user'
+            });
+            await user.save();
+            console.log("LOG: New user created via Google:", user.username);
+        } else if (!user.googleId) {
+            // If user exists with email but no googleId, link them
+            user.googleId = googleId;
+            await user.save();
+            console.log("LOG: Linked existing email to Google account:", email);
+        }
+
+        const jwtToken = jwt.sign(
+            { id: user._id, role: 'user' },
+            process.env.JWT_SECRET || "secret_key",
+            { expiresIn: "1h" }
+        );
+
+        res.status(200).json({
+            message: "Google Login successful",
+            token: jwtToken,
+            username: user.username,
+            role: 'user',
+            picture
+        });
+    } catch (error) {
+        console.error("LOG: Google Auth Error:", error);
+        res.status(400).json({ message: "Invalid Google token", error: error.message });
     }
 });
 

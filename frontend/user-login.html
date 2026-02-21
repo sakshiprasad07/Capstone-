@@ -7,6 +7,7 @@
     <title>Public Login | Crime Hotspot</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <meta name="referrer" content="single-origin-when-cross-origin">
 </head>
 
 <body>
@@ -25,11 +26,17 @@
                     <input type="password" id="password" placeholder="••••••••" required>
                 </div>
                 <button type="submit" class="btn">Login</button>
+
+                <div class="divider"><span>OR</span></div>
+
+                <div id="googleBtn" class="google-btn-container"></div>
+
                 <p class="switch-form">Don't have an account? <a href="signup.html">Sign Up</a></p>
             </form>
             <div id="message" class="message"></div>
         </div>
     </div>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="script.js"></script>
 </body>
 

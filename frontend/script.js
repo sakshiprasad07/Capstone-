@@ -89,3 +89,47 @@ loginForms.forEach(formId => {
         });
     }
 });
+
+// Google Authentication Handling
+async function handleGoogleResponse(response) {
+    try {
+        const res = await fetch(`${API_URL}/auth/google`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: response.credential })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('username', data.username);
+            localStorage.setItem('role', data.role);
+            if (data.picture) localStorage.setItem('profilePic', data.picture);
+
+            showMessage(`Google Login successful! Welcome ${data.username}`, 'success');
+            setTimeout(() => {
+                window.location.href = 'dashboard.html';
+            }, 1500);
+        } else {
+            showMessage(data.message || 'Google authentication failed', 'error');
+        }
+    } catch (error) {
+        showMessage('Connection error during Google login', 'error');
+    }
+}
+
+// Initialize Google Identity Services
+window.onload = function () {
+    const googleBtn = document.getElementById('googleBtn');
+    if (googleBtn && typeof google !== 'undefined') {
+        google.accounts.id.initialize({
+            client_id: "772786124174-83go9s21icd8m5lrqeu28brgfhaiupa1.apps.googleusercontent.com", // User must replace this
+            callback: handleGoogleResponse
+        });
+        google.accounts.id.renderButton(
+            googleBtn,
+            { theme: "outline", size: "large", width: "100%", text: "signin_with" }
+        );
+    }
+};
