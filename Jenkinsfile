@@ -3,12 +3,6 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
-            steps {
-                git 'https://github.com/sakshiprasad07/Capstone-.git'
-            }
-        }
-
         stage('Install Backend Dependencies') {
             steps {
                 dir('backend') {
