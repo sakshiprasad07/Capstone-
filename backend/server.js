@@ -124,6 +124,14 @@ app.post("/police/login", async (req, res) => {
     }
 });
 
+app.post("/github-webhook", (req, res) => {
+    console.log("📩 GitHub Webhook Triggered!");
+    console.log("Event:", req.headers["x-github-event"]);
+    console.log("Payload:", req.body);
+
+    res.status(200).send("Webhook received");
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
