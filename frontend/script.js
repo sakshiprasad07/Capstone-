@@ -78,7 +78,11 @@ loginForms.forEach(formId => {
 
                     // Specific logic based on role if needed
                     setTimeout(() => {
-                        window.location.href = 'dashboard.html';
+                        if (data.role === 'police') {
+                            window.location.href = 'police-dashboard.html';
+                        } else {
+                            window.location.href = 'user-landing.html';
+                        }
                     }, 1500);
                 } else {
                     showMessage(data.message || 'Invalid credentials', 'error');
@@ -109,7 +113,11 @@ async function handleGoogleResponse(response) {
 
             showMessage(`Google Login successful! Welcome ${data.username}`, 'success');
             setTimeout(() => {
-                window.location.href = 'dashboard.html';
+                if (data.role === 'police') {
+                    window.location.href = 'police-dashboard.html';
+                } else {
+                    window.location.href = 'user-landing.html';
+                }
             }, 1500);
         } else {
             showMessage(data.message || 'Google authentication failed', 'error');
