@@ -1,0 +1,23 @@
+version: "3"
+
+services:
+  backend:
+    build: ./backend
+    container_name: crime_backend
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/crimeDB
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo
+    container_name: crime_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
