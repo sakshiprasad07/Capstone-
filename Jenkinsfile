@@ -11,19 +11,19 @@ pipeline {
 
         stage('Build Docker Images') {
             steps {
-                sh 'docker-compose build'
+                bat 'docker compose build'
             }
         }
 
         stage('Stop Old Containers') {
             steps {
-                sh 'docker-compose down'
+                bat 'docker compose down'
             }
         }
 
         stage('Deploy Updated Containers') {
             steps {
-                sh 'docker-compose up -d'
+                bat 'docker compose up -d'
             }
         }
     }
