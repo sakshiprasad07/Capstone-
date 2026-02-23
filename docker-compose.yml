@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   frontend:
     build: ./frontend
@@ -29,5 +31,18 @@ services:
     volumes:
       - mongo_data:/data/db
 
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: crime_jenkins
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    privileged: true
+    restart: unless-stopped
+
 volumes:
   mongo_data:
+  jenkins_home:
