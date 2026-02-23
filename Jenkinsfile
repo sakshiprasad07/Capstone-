@@ -9,36 +9,31 @@ pipeline {
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Build Docker Images') {
             steps {
-                dir('backend') {
-                    bat 'npm install'
-                }
+                bat 'docker-compose build'
             }
         }
 
-        stage('Run Tests') {
+        stage('Stop Old Containers') {
             steps {
-                dir('backend') {
-                    bat 'npm test'
-                }
+                bat 'docker-compose down'
             }
         }
 
-        stage('Build Application') {
+        stage('Deploy Updated Containers') {
             steps {
-                dir('backend') {
-                    bat 'npm run build'
-                }
+                bat 'docker-compose up -d'
             }
         }
     }
+
     post {
         always {
             echo 'Pipeline execution completed.'
         }
         success {
-            echo 'Build was successful.'
+            echo 'CI/CD executed successfully. Containers redeployed.'
         }
         failure {
             echo 'Build failed.'
