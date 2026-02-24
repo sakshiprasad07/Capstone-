@@ -1,6 +1,6 @@
 const API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? `http://${window.location.hostname}:5000`
-    : 'http://127.0.0.1:5000';
+    ? `http://${window.location.hostname}:3000`
+    : 'http://127.0.0.1:3000';
 
 // Helper to show messages
 function showMessage(msg, type) {
