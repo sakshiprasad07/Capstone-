@@ -1,24 +1,34 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true
-  },
-  password: {
-    type: String,
-    required: true
-  },
-  role: {
-    type: String,
-    enum: ["citizen", "police"],
-    default: "citizen"
-  }
-});
+    username: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true
+    },
+    email: {
+        type: String,
+        unique: true,
+        sparse: true, // Allow multiple nulls if many users don't have email (though Google users will)
+        trim: true
+    },
+    password: {
+        type: String,
+        required: function () {
+            return !this.googleId; // Password required only if not a Google user
+        }
+    },
+    googleId: {
+        type: String,
+        unique: true,
+        sparse: true
+    },
+    role: {
+        type: String,
+        enum: ['user', 'police'],
+        default: 'user'
+    }
+}, { timestamps: true });
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.model('User', userSchema);

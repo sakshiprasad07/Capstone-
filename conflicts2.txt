@@ -1,0 +1,6 @@
+﻿backend/.env
+backend/models/User.js
+backend/node_modules/.package-lock.json
+backend/package-lock.json
+backend/package.json
+backend/server.js
