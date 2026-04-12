@@ -8,7 +8,7 @@ echo   CRIME HOTSPOT ANALYSIS - DEMO SCRIPT
 echo ========================================
 echo.
 
-cd "d:\Sakshi work\CAPSTONE\Crime Hotspot Analysis\Capstone-"
+cd /d "%~dp0"
 
 echo [1/5] Checking if Docker containers are running...
 echo.
