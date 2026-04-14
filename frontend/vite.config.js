@@ -6,6 +6,13 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
-    port: 3000
+    port: 5173,
+    proxy: {
+      '/api': 'http://localhost:3000',
+      '/signup': 'http://localhost:3000',
+      '/user': 'http://localhost:3000',
+      '/police': 'http://localhost:3000',
+      '/auth': 'http://localhost:3000',
+    }
   }
 })

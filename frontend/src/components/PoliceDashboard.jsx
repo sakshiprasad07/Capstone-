@@ -4,12 +4,12 @@ import { useNavigate } from 'react-router-dom';
 function PoliceDashboard() {
   const [activeTab, setActiveTab] = useState('sos');
   const [username, setUsername] = useState('Officer');
-  
+
   const [sosAlerts, setSosAlerts] = useState([
     { id: 'sos-1', type: 'sos', title: 'High Street Junction', desc: 'Distress signal received 2 mins ago. Geolocation tagged within 50m radius.', status: 'pending' },
     { id: 'sos-2', type: 'sos', title: 'Central Park East', desc: 'Officer dispatched. Arrival estimated in 3 mins.', status: 'acknowledged' }
   ]);
-  
+
   const [reportAlerts, setReportAlerts] = useState([
     { id: 'report-1', type: 'report', title: 'Downtown Mall', desc: 'Public report: Shoplifting incident in progress. Subject fled towards Metro.', status: 'pending' }
   ]);
@@ -39,16 +39,16 @@ function PoliceDashboard() {
   };
 
   const updateAlertStatus = (alerts, setAlerts, id, newStatus) => {
-    setAlerts(alerts.map(alert => 
+    setAlerts(alerts.map(alert =>
       alert.id === id ? { ...alert, status: newStatus } : alert
     ));
   };
 
   const renderAlerts = (alerts, setAlerts) => (
     alerts.map((alert) => (
-      <div 
-        key={alert.id} 
-        className="alert-card" 
+      <div
+        key={alert.id}
+        className="alert-card"
         style={{ opacity: alert.status === 'resolved' ? 0.6 : 1 }}
       >
         <div className="alert-header">
@@ -67,14 +67,14 @@ function PoliceDashboard() {
           {alert.status !== 'resolved' ? (
             <>
               {alert.status === 'pending' && (
-                <button 
+                <button
                   className="action-btn acknowledge"
                   onClick={() => updateAlertStatus(alerts, setAlerts, alert.id, 'acknowledged')}
                 >
                   {alert.type === 'sos' ? 'Acknowledge' : 'Assign Unit'}
                 </button>
               )}
-              <button 
+              <button
                 className="action-btn resolve"
                 onClick={() => updateAlertStatus(alerts, setAlerts, alert.id, 'resolved')}
               >
@@ -128,14 +128,14 @@ function PoliceDashboard() {
       {/* Sidebar Alert Panel */}
       <aside className="alert-panel">
         <div className="panel-tabs">
-          <button 
-            className={`tab-btn ${activeTab === 'sos' ? 'active' : ''}`} 
+          <button
+            className={`tab-btn ${activeTab === 'sos' ? 'active' : ''}`}
             onClick={() => setActiveTab('sos')}
           >
             Emergency SOS
           </button>
-          <button 
-            className={`tab-btn ${activeTab === 'reports' ? 'active' : ''}`} 
+          <button
+            className={`tab-btn ${activeTab === 'reports' ? 'active' : ''}`}
             onClick={() => setActiveTab('reports')}
           >
             Crime Reports
