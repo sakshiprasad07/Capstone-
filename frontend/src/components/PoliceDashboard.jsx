@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import CrimeMap from './CrimeMap';
 
 const API_URL = 'http://localhost:5000';
 
@@ -7,19 +8,35 @@ function PoliceDashboard() {
   const [activeTab, setActiveTab] = useState('sos');
   const [username, setUsername] = useState('Officer');
   const [errorMessage, setErrorMessage] = useState('');
-  
+  const [dangerInfo, setDangerInfo] = useState(null);
+
   const [sosAlerts, setSosAlerts] = useState([]);
 
-  const [sosAlerts, setSosAlerts] = useState([
-    { id: 'sos-1', type: 'sos', title: 'High Street Junction', desc: 'Distress signal received 2 mins ago. Geolocation tagged within 50m radius.', status: 'pending' },
-    { id: 'sos-2', type: 'sos', title: 'Central Park East', desc: 'Officer dispatched. Arrival estimated in 3 mins.', status: 'acknowledged' }
-  ]);
-
+  // Report alerts are local-only (no backend endpoint yet)
   const [reportAlerts, setReportAlerts] = useState([
     { id: 'report-1', type: 'report', title: 'Downtown Mall', desc: 'Public report: Shoplifting incident in progress. Subject fled towards Metro.', status: 'pending' }
   ]);
 
   const navigate = useNavigate();
+
+  const fetchSosAlerts = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const response = await fetch(`${API_URL}/sos`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setSosAlerts(data.sos || []);
+      } else {
+        setErrorMessage(data.message || 'Unable to load SOS alerts');
+      }
+    } catch (error) {
+      console.error('Fetch SOS error:', error);
+      setErrorMessage('Connection error while loading SOS alerts');
+    }
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -35,27 +52,10 @@ function PoliceDashboard() {
       setUsername(storedUsername);
     }
 
-    const fetchSosAlerts = async () => {
-      try {
-        const response = await fetch(`${API_URL}/sos`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const data = await response.json();
-        if (response.ok) {
-          setSosAlerts(data.sos || []);
-        } else {
-          setErrorMessage(data.message || 'Unable to load SOS alerts');
-        }
-      } catch (error) {
-        console.error('Fetch SOS error:', error);
-        setErrorMessage('Connection error while loading SOS alerts');
-      }
-    };
-
     fetchSosAlerts();
     const intervalId = setInterval(fetchSosAlerts, 5000);
     return () => clearInterval(intervalId);
-  }, [navigate]);
+  }, [navigate, fetchSosAlerts]);
 
   const handleLogout = (e) => {
     e.preventDefault();
@@ -65,18 +65,19 @@ function PoliceDashboard() {
     navigate('/');
   };
 
-  const updateAlertStatus = (alerts, setAlerts, id, newStatus) => {
-    setAlerts(alerts.map(alert => {
-      const alertId = alert._id || alert.id;
-      return alertId === id ? { ...alert, status: newStatus } : alert;
-    }));
-  };
+  const handleDangerZone = useCallback((info) => {
+    setDangerInfo(info);
+  }, []);
 
+  // FIX: handleStatusUpdate now uses functional updater so it's never stale,
+  // and correctly uses alert._id (MongoDB) for SOS alerts
   const handleStatusUpdate = async (alert, newStatus) => {
+    const alertId = alert._id || alert.id;
+
     if (alert.type === 'sos') {
       const token = localStorage.getItem('token');
       try {
-        const response = await fetch(`${API_URL}/sos/${alert._id || alert.id}/status`, {
+        const response = await fetch(`${API_URL}/sos/${alertId}/status`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -86,7 +87,11 @@ function PoliceDashboard() {
         });
         const data = await response.json();
         if (response.ok) {
-          updateAlertStatus(sosAlerts, setSosAlerts, alert._id || alert.id, newStatus);
+          // Use functional updater to guarantee we use the latest state
+          setSosAlerts(prev =>
+            prev.map(a => (a._id || a.id) === alertId ? { ...a, status: newStatus } : a)
+          );
+          setErrorMessage('');
         } else {
           setErrorMessage(data.message || 'Unable to update SOS status');
         }
@@ -97,15 +102,31 @@ function PoliceDashboard() {
       return;
     }
 
-    updateAlertStatus(reportAlerts, setReportAlerts, alert.id, newStatus);
+    // Local update for report alerts
+    setReportAlerts(prev =>
+      prev.map(a => (a._id || a.id) === alertId ? { ...a, status: newStatus } : a)
+    );
   };
 
-  const renderAlerts = (alerts, setAlerts) => {
+  // FIX: renderAlerts now only takes `alerts` — setSosAlerts/setReportAlerts are
+  // captured from component scope, not passed as params (was the root cause of broken buttons)
+  const renderAlerts = (alerts) => {
+    if (alerts.length === 0) {
+      return (
+        <div style={{
+          textAlign: 'center', color: 'var(--text-gray)',
+          padding: '2rem', fontSize: '0.9rem'
+        }}>
+          No alerts at this time.
+        </div>
+      );
+    }
+
     return alerts.map((alert) => {
       const alertId = alert._id || alert.id;
       return (
-        <div 
-          key={alertId} 
+        <div
+          key={alertId}
           className="alert-card"
           style={{ opacity: alert.status === 'resolved' ? 0.6 : 1 }}
         >
@@ -118,14 +139,19 @@ function PoliceDashboard() {
             </span>
           </div>
           <div className="alert-info">
-            <h4>{alert.type === 'sos' ? `SOS from ${alert.username}` : alert.title}</h4>
+            <h4>{alert.type === 'sos' ? `SOS from ${alert.username || 'Citizen'}` : alert.title}</h4>
             <p>{alert.type === 'sos' ? alert.message : alert.desc}</p>
-            {alert.type === 'sos' && alert.status !== 'pending' && (
+            {alert.type === 'sos' && (
               <div className="alert-location">
                 <strong>Location:</strong>{' '}
                 {alert.latitude != null && alert.longitude != null
-                  ? `${alert.latitude.toFixed(5)}, ${alert.longitude.toFixed(5)}`
+                  ? `${Number(alert.latitude).toFixed(5)}, ${Number(alert.longitude).toFixed(5)}`
                   : 'Unavailable'}
+              </div>
+            )}
+            {alert.createdAt && (
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-gray)', marginTop: 4 }}>
+                {new Date(alert.createdAt).toLocaleString()}
               </div>
             )}
           </div>
@@ -133,66 +159,26 @@ function PoliceDashboard() {
             {alert.status !== 'resolved' ? (
               <>
                 {alert.status === 'pending' && (
-                  <button 
+                  <button
                     className="action-btn acknowledge"
                     onClick={() => handleStatusUpdate(alert, 'acknowledged')}
                   >
                     {alert.type === 'sos' ? 'Acknowledge' : 'Assign Unit'}
                   </button>
                 )}
-                <button 
+                <button
                   className="action-btn resolve"
                   onClick={() => handleStatusUpdate(alert, 'resolved')}
-    setAlerts(alerts.map(alert =>
-      alert.id === id ? { ...alert, status: newStatus } : alert
-    ));
-  };
-
-  const renderAlerts = (alerts, setAlerts) => (
-    alerts.map((alert) => (
-      <div
-        key={alert.id}
-        className="alert-card"
-        style={{ opacity: alert.status === 'resolved' ? 0.6 : 1 }}
-      >
-        <div className="alert-header">
-          <span className={`alert-type ${alert.type === 'sos' ? 'type-sos' : 'type-report'}`}>
-            {alert.type === 'sos' ? 'Emergency SOS' : 'Crime Report'}
-          </span>
-          <span className={`status-badge status-${alert.status}`}>
-            {alert.status.toUpperCase()}
-          </span>
-        </div>
-        <div className="alert-info">
-          <h4>{alert.title}</h4>
-          <p>{alert.desc}</p>
-        </div>
-        <div className="alert-actions">
-          {alert.status !== 'resolved' ? (
-            <>
-              {alert.status === 'pending' && (
-                <button
-                  className="action-btn acknowledge"
-                  onClick={() => updateAlertStatus(alerts, setAlerts, alert.id, 'acknowledged')}
                 >
                   {alert.type === 'sos' ? 'Resolve' : 'Close Case'}
                 </button>
               </>
             ) : (
-              <span style={{ fontSize: '0.8rem', color: 'var(--success)' }}>Case Closed</span>
+              <span className="resolved-text" style={{ fontSize: '0.8rem', color: 'var(--success)' }}>
+                ✅ Incident Resolved
+              </span>
             )}
           </div>
-              )}
-              <button
-                className="action-btn resolve"
-                onClick={() => updateAlertStatus(alerts, setAlerts, alert.id, 'resolved')}
-              >
-                {alert.type === 'sos' ? 'Resolve' : 'Close Case'}
-              </button>
-            </>
-          ) : (
-            <span style={{ fontSize: '0.8rem', color: 'var(--success)' }}>Case Closed</span>
-          )}
         </div>
       );
     });
@@ -202,7 +188,7 @@ function PoliceDashboard() {
     <div className="police-dashboard" style={{ background: 'var(--bg-dark)' }}>
       {/* Main Map View */}
       <main className="map-view">
-        <div className="dashboard-nav" style={{ position: 'absolute', top: 0, left: 0, right: 0, width: '100%', height: 'auto' }}>
+        <div className="dashboard-nav" style={{ position: 'absolute', top: 0, left: 0, right: 0, width: '100%', height: 'auto', zIndex: 500 }}>
           <div className="logo">
             <h2 style={{ fontWeight: 800, letterSpacing: '-1px' }}>
               CRIME<span style={{ color: 'var(--police-blue)' }}>CONTROL</span>
@@ -218,30 +204,43 @@ function PoliceDashboard() {
           </div>
         </div>
 
-        <div className="map-placeholder" style={{ height: '100%' }}>
-          <div className="map-overlay-text">
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
-              style={{ display: 'block', margin: '0 auto 20px', opacity: 0.3 }}>
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="22" y1="12" x2="18" y2="12"></line>
-              <line x1="6" y1="12" x2="2" y2="12"></line>
-              <line x1="12" y1="6" x2="12" y2="2"></line>
-              <line x1="12" y1="22" x2="12" y2="18"></line>
-            </svg>
-            Real-time Hotspot Map
-          </div>
+        {/* FIX: Police dashboard now shows the real CrimeMap instead of a placeholder */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+          <CrimeMap onDangerZone={handleDangerZone} />
         </div>
       </main>
 
       {/* Sidebar Alert Panel */}
       <aside className="alert-panel">
+        <div style={{ padding: '20px 20px 0', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-gray)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>
+            Live Dispatch Center
+          </div>
+          {errorMessage && (
+            <div style={{
+              background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)',
+              borderRadius: 8, padding: '8px 12px', fontSize: '0.82rem',
+              color: 'var(--error)', marginBottom: 12
+            }}>
+              {errorMessage}
+            </div>
+          )}
+        </div>
+
         <div className="panel-tabs">
           <button
             className={`tab-btn ${activeTab === 'sos' ? 'active' : ''}`}
             onClick={() => setActiveTab('sos')}
           >
-            Emergency SOS
+            Emergency SOS {sosAlerts.filter(a => a.status === 'pending').length > 0 && (
+              <span style={{
+                background: 'var(--emergency)', color: '#fff',
+                borderRadius: '50%', padding: '1px 6px', fontSize: '0.7rem',
+                marginLeft: 6, fontWeight: 700
+              }}>
+                {sosAlerts.filter(a => a.status === 'pending').length}
+              </span>
+            )}
           </button>
           <button
             className={`tab-btn ${activeTab === 'reports' ? 'active' : ''}`}
@@ -252,7 +251,7 @@ function PoliceDashboard() {
         </div>
 
         <div className="alert-feed">
-          {activeTab === 'sos' ? renderAlerts(sosAlerts, setSosAlerts) : renderAlerts(reportAlerts, setReportAlerts)}
+          {activeTab === 'sos' ? renderAlerts(sosAlerts) : renderAlerts(reportAlerts)}
         </div>
       </aside>
     </div>

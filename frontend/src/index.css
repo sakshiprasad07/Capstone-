@@ -330,7 +330,10 @@ p {
         transform: translateY(30px);
     }
 
-    to {}
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 @media (max-width: 768px) {
@@ -937,10 +940,42 @@ p {
 .action-btn.resolve {
     background: rgba(16, 185, 129, 0.2);
     border-color: rgba(16, 185, 129, 0.3);
+    color: #34d399;
 }
 
 .action-btn.resolve:hover {
     background: var(--success);
+    color: white;
+}
+
+.action-btn.acknowledge {
+    background: rgba(251, 191, 36, 0.15);
+    border-color: rgba(251, 191, 36, 0.3);
+    color: #fbbf24;
+}
+
+.action-btn.acknowledge:hover {
+    background: rgba(251, 191, 36, 0.35);
+    color: white;
+}
+
+/* Feedback message */
+.feedback-message {
+    position: fixed;
+    bottom: 130px;
+    right: 30px;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: var(--success);
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    z-index: 1100;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    animation: fadeIn 0.3s ease-out;
+    max-width: 300px;
 }
 
 @media (max-width: 1024px) {

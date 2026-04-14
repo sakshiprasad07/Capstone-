@@ -124,7 +124,7 @@ function UserLanding() {
       {/* SOS Confirmation Modal */}
       {showSosModal && (
         <div className="modal-overlay" style={{ display: 'flex' }} onClick={(e) => {
-          if (e.target.className === 'modal-overlay') setShowSosModal(false);
+          if (e.target === e.currentTarget) setShowSosModal(false);
         }}>
           <div className="modal-content">
             <div style={{ color: 'var(--emergency)', marginBottom: '1.5rem' }}>

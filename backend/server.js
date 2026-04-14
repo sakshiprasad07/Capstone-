@@ -368,6 +368,11 @@ app.put('/sos/:id/status', authenticateToken, requirePolice, async (req, res) =>
 // Serve static frontend files (after all API routes)
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
+// Catch-all route to serve the SPA index.html
+app.get(/.*/, (req, res) => {
+    res.sendFile(path.resolve(__dirname, '../frontend/dist/index.html'));
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
