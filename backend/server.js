@@ -9,6 +9,7 @@ const csv = require('csv-parser');
 const User = require('./models/User');
 const Police = require('./models/Police');
 const Sos = require('./models/Sos');
+const CrimeReport = require('./models/CrimeReport');
 const { OAuth2Client } = require('google-auth-library');
 require('dotenv').config();
 
@@ -327,9 +328,40 @@ app.post('/sos', async (req, res) => {
     }
 });
 
+app.post('/reports', async (req, res) => {
+    try {
+        const {
+            username,
+            title,
+            desc,
+            reportType,
+            location,
+            incidentTime,
+            details
+        } = req.body;
+        const reportUsername = username || req.body.user || 'Anonymous';
+
+        const report = new CrimeReport({
+            username: reportUsername,
+            title: title || `${reportType || 'Crime Report'} at ${location || 'Unknown location'}`,
+            desc: desc || `Seen at: ${incidentTime || 'Unknown time'}\nDetails: ${details || 'No additional info provided.'}`,
+            reportType: reportType || '',
+            location: location || '',
+            incidentTime: incidentTime || '',
+            details: details || ''
+        });
+
+        await report.save();
+        res.status(201).json({ message: 'Crime report submitted successfully', report });
+    } catch (error) {
+        console.error('LOG: Report Save Error:', error);
+        res.status(500).json({ message: 'Error submitting report', error: error.message });
+    }
+});
+
 app.get('/sos', authenticateToken, requirePolice, async (req, res) => {
     try {
-        const sosList = await Sos.find().sort({ createdAt: -1 });
+        const sosList = await Sos.find({ type: 'sos' }).sort({ createdAt: -1 });
         const normalized = sosList.map((entry) => ({
             ...entry.toObject(),
             type: entry.type || 'sos'
@@ -341,7 +373,17 @@ app.get('/sos', authenticateToken, requirePolice, async (req, res) => {
     }
 });
 
-app.put('/sos/:id/status', authenticateToken, requirePolice, async (req, res) => {
+app.get('/reports', authenticateToken, requirePolice, async (req, res) => {
+    try {
+        const reportList = await CrimeReport.find().sort({ createdAt: -1 });
+        res.status(200).json({ reports: reportList });
+    } catch (error) {
+        console.error('LOG: Report Fetch Error:', error);
+        res.status(500).json({ message: 'Error fetching crime reports', error: error.message });
+    }
+});
+
+app.put('/reports/:id/status', authenticateToken, requirePolice, async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
@@ -350,18 +392,18 @@ app.put('/sos/:id/status', authenticateToken, requirePolice, async (req, res) =>
             return res.status(400).json({ message: 'Invalid status value' });
         }
 
-        const sos = await Sos.findById(id);
-        if (!sos) {
-            return res.status(404).json({ message: 'SOS alert not found' });
+        const report = await CrimeReport.findById(id);
+        if (!report) {
+            return res.status(404).json({ message: 'Crime report not found' });
         }
 
-        sos.status = status;
-        await sos.save();
+        report.status = status;
+        await report.save();
 
-        res.status(200).json({ message: 'SOS status updated', sos });
+        res.status(200).json({ message: 'Crime report status updated', report });
     } catch (error) {
-        console.error('LOG: SOS Status Update Error:', error);
-        res.status(500).json({ message: 'Error updating SOS status', error: error.message });
+        console.error('LOG: Report Status Update Error:', error);
+        res.status(500).json({ message: 'Error updating crime report status', error: error.message });
     }
 });
 

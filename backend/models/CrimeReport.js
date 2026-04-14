@@ -1,30 +1,14 @@
 const mongoose = require('mongoose');
 
-const sosSchema = new mongoose.Schema({
+const crimeReportSchema = new mongoose.Schema({
   username: {
     type: String,
     required: true,
     trim: true
   },
-  type: {
-    type: String,
-    enum: ['sos', 'report'],
-    default: 'sos'
-  },
-  message: {
-    type: String,
-    default: 'Emergency SOS request submitted by user.'
-  },
-  latitude: {
-    type: Number,
-    default: null
-  },
-  longitude: {
-    type: Number,
-    default: null
-  },
   title: {
     type: String,
+    required: true,
     trim: true
   },
   desc: {
@@ -33,10 +17,12 @@ const sosSchema = new mongoose.Schema({
   },
   reportType: {
     type: String,
+    required: true,
     trim: true
   },
   location: {
     type: String,
+    required: true,
     trim: true
   },
   incidentTime: {
@@ -54,4 +40,4 @@ const sosSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-module.exports = mongoose.model('Sos', sosSchema);
+module.exports = mongoose.model('CrimeReport', crimeReportSchema);

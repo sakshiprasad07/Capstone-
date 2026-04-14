@@ -7,7 +7,12 @@ const API_URL = 'http://localhost:5000';
 
 function UserLanding() {
   const [showSosModal, setShowSosModal] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
   const [sosStatus, setSosStatus] = useState('sos'); // 'sos', 'sent'
+  const [reportType, setReportType] = useState('Theft');
+  const [reportLocation, setReportLocation] = useState('');
+  const [reportTime, setReportTime] = useState('');
+  const [reportDetails, setReportDetails] = useState('');
   const [feedback, setFeedback] = useState('');
   const [dangerInfo, setDangerInfo] = useState(null);
   const navigate = useNavigate();
@@ -75,6 +80,49 @@ function UserLanding() {
     }
   };
 
+  const sendReport = async () => {
+    const username = localStorage.getItem('username') || 'Anonymous';
+    const title = `${reportType} at ${reportLocation || 'Unknown location'}`;
+    const desc = `Seen at: ${reportTime || 'Unknown time'}\nDetails: ${reportDetails || 'No additional information provided.'}`;
+
+    try {
+      const response = await fetch(`${API_URL}/reports`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username,
+          title,
+          desc,
+          reportType,
+          location: reportLocation,
+          incidentTime: reportTime,
+          details: reportDetails
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setFeedback('Crime report sent to police. Thank you for reporting.');
+        setShowReportModal(false);
+        setReportType('Theft');
+        setReportLocation('');
+        setReportTime('');
+        setReportDetails('');
+        setTimeout(() => setFeedback(''), 5000);
+      } else {
+        setFeedback(data.message || 'Unable to send crime report.');
+      }
+    } catch (error) {
+      setFeedback('Connection error while sending crime report.');
+      console.error('Report send error:', error);
+    }
+  };
+
+  const handleSubmitReport = (e) => {
+    e.preventDefault();
+    sendReport();
+  };
+
   const handleDangerZone = useCallback((info) => {
     setDangerInfo(info);
   }, []);
@@ -92,7 +140,9 @@ function UserLanding() {
           </h2>
         </div>
         <div className="nav-links">
-          <a href="#" className="report-btn">Report a Crime</a>
+          <button type="button" className="report-btn" onClick={() => setShowReportModal(true)}>
+            Report a Crime
+          </button>
           <a href="/" onClick={handleLogout} style={{ color: 'var(--text-gray)', textDecoration: 'none', alignSelf: 'center' }}>
             Logout
           </a>
@@ -142,6 +192,70 @@ function UserLanding() {
               <button className="modal-btn confirm-sos" onClick={handleConfirmSos}>Confirm SOS</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Report Crime Modal */}
+      {showReportModal && (
+        <div className="modal-overlay" style={{ display: 'flex' }} onClick={(e) => {
+          if (e.target === e.currentTarget) setShowReportModal(false);
+        }}>
+          <form className="modal-content" onSubmit={handleSubmitReport}>
+            <h3>Report a Crime</h3>
+            <div className="input-group">
+              <label htmlFor="crimeType">Type of Crime</label>
+              <select
+                id="crimeType"
+                value={reportType}
+                onChange={(e) => setReportType(e.target.value)}
+                style={{ width: '100%', padding: '16px 20px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(15, 23, 42, 0.5)', color: 'white' }}
+              >
+                <option>Theft</option>
+                <option>Assault</option>
+                <option>Vandalism</option>
+                <option>Robbery</option>
+                <option>Suspicious Activity</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div className="input-group">
+              <label htmlFor="crimeLocation">Where did it happen?</label>
+              <input
+                id="crimeLocation"
+                type="text"
+                value={reportLocation}
+                onChange={(e) => setReportLocation(e.target.value)}
+                placeholder="Street, landmark, or neighborhood"
+                required
+              />
+            </div>
+            <div className="input-group">
+              <label htmlFor="crimeTime">When did you see it?</label>
+              <input
+                id="crimeTime"
+                type="text"
+                value={reportTime}
+                onChange={(e) => setReportTime(e.target.value)}
+                placeholder="e.g. 10:30 PM, today"
+                required
+              />
+            </div>
+            <div className="input-group">
+              <label htmlFor="crimeDetails">Any other useful information</label>
+              <textarea
+                id="crimeDetails"
+                value={reportDetails}
+                onChange={(e) => setReportDetails(e.target.value)}
+                placeholder="Describe suspects, vehicles, or what happened"
+                rows={4}
+                style={{ width: '100%', padding: '16px 20px', background: 'rgba(15, 23, 42, 0.5)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '14px', color: 'white', resize: 'vertical' }}
+              />
+            </div>
+            <div className="modal-actions">
+              <button className="modal-btn cancel-sos" type="button" onClick={() => setShowReportModal(false)}>Cancel</button>
+              <button className="modal-btn confirm-sos" type="submit">Submit Report</button>
+            </div>
+          </form>
         </div>
       )}
     </div>

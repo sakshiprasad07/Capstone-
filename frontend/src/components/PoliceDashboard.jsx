@@ -11,11 +11,7 @@ function PoliceDashboard() {
   const [dangerInfo, setDangerInfo] = useState(null);
 
   const [sosAlerts, setSosAlerts] = useState([]);
-
-  // Report alerts are local-only (no backend endpoint yet)
-  const [reportAlerts, setReportAlerts] = useState([
-    { id: 'report-1', type: 'report', title: 'Downtown Mall', desc: 'Public report: Shoplifting incident in progress. Subject fled towards Metro.', status: 'pending' }
-  ]);
+  const [reportAlerts, setReportAlerts] = useState([]);
 
   const navigate = useNavigate();
 
@@ -38,6 +34,25 @@ function PoliceDashboard() {
     }
   }, []);
 
+  const fetchReportAlerts = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const response = await fetch(`${API_URL}/reports`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setReportAlerts(data.reports || []);
+      } else {
+        setErrorMessage(data.message || 'Unable to load crime reports');
+      }
+    } catch (error) {
+      console.error('Fetch report error:', error);
+      setErrorMessage('Connection error while loading crime reports');
+    }
+  }, []);
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
@@ -53,9 +68,13 @@ function PoliceDashboard() {
     }
 
     fetchSosAlerts();
-    const intervalId = setInterval(fetchSosAlerts, 5000);
+    fetchReportAlerts();
+    const intervalId = setInterval(() => {
+      fetchSosAlerts();
+      fetchReportAlerts();
+    }, 5000);
     return () => clearInterval(intervalId);
-  }, [navigate, fetchSosAlerts]);
+  }, [navigate, fetchSosAlerts, fetchReportAlerts]);
 
   const handleLogout = (e) => {
     e.preventDefault();
@@ -73,39 +92,37 @@ function PoliceDashboard() {
   // and correctly uses alert._id (MongoDB) for SOS alerts
   const handleStatusUpdate = async (alert, newStatus) => {
     const alertId = alert._id || alert.id;
+    const token = localStorage.getItem('token');
+    const endpoint = alert.type === 'sos' ? `/sos/${alertId}/status` : `/reports/${alertId}/status`;
 
-    if (alert.type === 'sos') {
-      const token = localStorage.getItem('token');
-      try {
-        const response = await fetch(`${API_URL}/sos/${alertId}/status`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({ status: newStatus })
-        });
-        const data = await response.json();
-        if (response.ok) {
-          // Use functional updater to guarantee we use the latest state
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        if (alert.type === 'sos') {
           setSosAlerts(prev =>
             prev.map(a => (a._id || a.id) === alertId ? { ...a, status: newStatus } : a)
           );
-          setErrorMessage('');
         } else {
-          setErrorMessage(data.message || 'Unable to update SOS status');
+          setReportAlerts(prev =>
+            prev.map(a => (a._id || a.id) === alertId ? { ...a, status: newStatus } : a)
+          );
         }
-      } catch (error) {
-        console.error('Update SOS error:', error);
-        setErrorMessage('Connection error while updating SOS status');
+        setErrorMessage('');
+      } else {
+        setErrorMessage(data.message || 'Unable to update alert status');
       }
-      return;
+    } catch (error) {
+      console.error('Update alert status error:', error);
+      setErrorMessage('Connection error while updating alert status');
     }
-
-    // Local update for report alerts
-    setReportAlerts(prev =>
-      prev.map(a => (a._id || a.id) === alertId ? { ...a, status: newStatus } : a)
-    );
   };
 
   // FIX: renderAlerts now only takes `alerts` — setSosAlerts/setReportAlerts are
@@ -141,6 +158,13 @@ function PoliceDashboard() {
           <div className="alert-info">
             <h4>{alert.type === 'sos' ? `SOS from ${alert.username || 'Citizen'}` : alert.title}</h4>
             <p>{alert.type === 'sos' ? alert.message : alert.desc}</p>
+            {alert.type === 'report' && (
+              <div style={{ marginTop: '0.8rem', textAlign: 'left', color: 'var(--text-gray)' }}>
+                <div><strong>Crime Type:</strong> {alert.reportType || 'Unknown'}</div>
+                <div><strong>Location:</strong> {alert.location || 'Unknown'}</div>
+                <div><strong>Seen at:</strong> {alert.incidentTime || 'Unknown'}</div>
+              </div>
+            )}
             {alert.type === 'sos' && (
               <div className="alert-location">
                 <strong>Location:</strong>{' '}
@@ -246,7 +270,15 @@ function PoliceDashboard() {
             className={`tab-btn ${activeTab === 'reports' ? 'active' : ''}`}
             onClick={() => setActiveTab('reports')}
           >
-            Crime Reports
+            Crime Reports {reportAlerts.filter(a => a.status === 'pending').length > 0 && (
+              <span style={{
+                background: 'var(--primary)', color: '#fff',
+                borderRadius: '50%', padding: '1px 6px', fontSize: '0.7rem',
+                marginLeft: 6, fontWeight: 700
+              }}>
+                {reportAlerts.filter(a => a.status === 'pending').length}
+              </span>
+            )}
           </button>
         </div>
 
