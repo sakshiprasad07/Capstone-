@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('./models/User');
 const Police = require('./models/Police');
+const Sos = require('./models/Sos');
 const { OAuth2Client } = require('google-auth-library');
 require('dotenv').config();
 
@@ -16,7 +17,7 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors({ origin: '*' })); // Allow all origins for local testing
-app.use(express.static(path.join(__dirname, '../frontend')));
+
 
 // Request logging and security headers middleware
 app.use((req, res, next) => {
@@ -25,6 +26,28 @@ app.use((req, res, next) => {
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
     next();
 });
+
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ message: 'Missing auth token' });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET || 'secret_key', (err, user) => {
+        if (err) return res.status(403).json({ message: 'Invalid token' });
+        req.user = user;
+        next();
+    });
+};
+
+const requirePolice = (req, res, next) => {
+    if (!req.user || req.user.role !== 'police') {
+        return res.status(403).json({ message: 'Police access required' });
+    }
+    next();
+};
 
 // Process-wide error handlers
 process.on('uncaughtException', (err) => {
@@ -133,7 +156,7 @@ app.post("/police/login", async (req, res) => {
 
         const token = jwt.sign(
             { id: officer._id, role: 'police' },
-            process.env.JWT_SECRET || "secret_key_police",
+            process.env.JWT_SECRET || "secret_key",
             { expiresIn: "1h" }
         );
 
@@ -203,7 +226,70 @@ app.post("/github-webhook", (req, res) => {
     res.status(200).send("Webhook received");
 });
 
-const PORT = process.env.PORT || 3000;
+// SOS Routes
+app.post('/sos', async (req, res) => {
+    try {
+        const { username, message, latitude, longitude } = req.body;
+        const sosUsername = username || req.body.user || 'Anonymous';
+
+        const sos = new Sos({
+            type: 'sos',
+            username: sosUsername,
+            message: message || 'Emergency SOS request submitted by user.',
+            latitude: latitude || null,
+            longitude: longitude || null
+        });
+
+        await sos.save();
+        res.status(201).json({ message: 'SOS sent successfully', sos });
+    } catch (error) {
+        console.error('LOG: SOS Save Error:', error);
+        res.status(500).json({ message: 'Error sending SOS', error: error.message });
+    }
+});
+
+app.get('/sos', authenticateToken, requirePolice, async (req, res) => {
+    try {
+        const sosList = await Sos.find().sort({ createdAt: -1 });
+        const normalized = sosList.map((entry) => ({
+            ...entry.toObject(),
+            type: entry.type || 'sos'
+        }));
+        res.status(200).json({ sos: normalized });
+    } catch (error) {
+        console.error('LOG: SOS Fetch Error:', error);
+        res.status(500).json({ message: 'Error fetching SOS alerts', error: error.message });
+    }
+});
+
+app.put('/sos/:id/status', authenticateToken, requirePolice, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!['pending', 'acknowledged', 'resolved'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid status value' });
+        }
+
+        const sos = await Sos.findById(id);
+        if (!sos) {
+            return res.status(404).json({ message: 'SOS alert not found' });
+        }
+
+        sos.status = status;
+        await sos.save();
+
+        res.status(200).json({ message: 'SOS status updated', sos });
+    } catch (error) {
+        console.error('LOG: SOS Status Update Error:', error);
+        res.status(500).json({ message: 'Error updating SOS status', error: error.message });
+    }
+});
+
+// Serve static frontend files (after all API routes)
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-const API_URL = ''; // Setup proxy relative to local development. Vite will proxy it to 5000.
+const API_URL = 'http://localhost:5000';
 
 function Login({ role }) {
   const [username, setUsername] = useState('');

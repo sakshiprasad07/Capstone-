@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const API_URL = 'http://localhost:5000';
+
 function UserLanding() {
   const [showSosModal, setShowSosModal] = useState(false);
   const [sosStatus, setSosStatus] = useState('sos'); // 'sos', 'sent'
+  const [feedback, setFeedback] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,15 +24,52 @@ function UserLanding() {
     navigate('/');
   };
 
-  const handleConfirmSos = () => {
-    // In a real app, this would get geolocation and send a request to the backend
-    alert('EMERGENCY SOS SENT! Your location has been shared with authorities.');
-    setShowSosModal(false);
-    setSosStatus('sent');
+  const sendSos = async (latitude = null, longitude = null) => {
+    const username = localStorage.getItem('username') || 'Anonymous';
 
-    setTimeout(() => {
-      setSosStatus('sos');
-    }, 5000);
+    try {
+      const response = await fetch(`${API_URL}/sos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username,
+          message: 'Emergency SOS request submitted from public dashboard.',
+          latitude,
+          longitude
+        })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        setFeedback('Emergency SOS sent to police. Help is on the way.');
+        setSosStatus('sent');
+        setTimeout(() => {
+          setSosStatus('sos');
+          setFeedback('');
+        }, 5000);
+      } else {
+        setFeedback(data.message || 'Unable to send SOS.');
+      }
+    } catch (error) {
+      setFeedback('Connection error while sending SOS.');
+      console.error('SOS send error:', error);
+    }
+  };
+
+  const handleConfirmSos = () => {
+    setShowSosModal(false);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          sendSos(position.coords.latitude, position.coords.longitude);
+        },
+        () => {
+          sendSos();
+        }
+      );
+    } else {
+      sendSos();
+    }
   };
 
   return (
@@ -72,6 +112,8 @@ function UserLanding() {
       >
         {sosStatus === 'sent' ? 'SENT' : 'SOS'}
       </button>
+
+      {feedback && <div className="feedback-message">{feedback}</div>}
 
       {/* SOS Confirmation Modal */}
       {showSosModal && (

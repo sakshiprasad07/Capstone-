@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
-const API_URL = '';
+const API_URL = 'http://localhost:5000';
 
 function Signup() {
   const [username, setUsername] = useState('');
