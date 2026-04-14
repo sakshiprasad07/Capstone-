@@ -343,6 +343,256 @@ p {
     }
 }
 
+/* ========== CRIME MAP STYLES ========== */
+
+.map-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+.crime-map-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* Dark theme overrides for Leaflet */
+.leaflet-container {
+    background: var(--map-bg) !important;
+    font-family: 'Outfit', sans-serif !important;
+}
+
+.leaflet-popup-content-wrapper {
+    background: rgba(255, 255, 255, 0.97) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+    backdrop-filter: blur(10px);
+}
+
+.leaflet-popup-tip {
+    background: rgba(255, 255, 255, 0.97) !important;
+}
+
+.leaflet-popup-content {
+    margin: 12px 14px !important;
+    font-family: 'Outfit', sans-serif !important;
+}
+
+.leaflet-popup-close-button {
+    color: #94a3b8 !important;
+    font-size: 18px !important;
+    padding: 6px 8px !important;
+}
+
+/* Map Legend */
+.map-legend {
+    position: absolute;
+    bottom: 30px;
+    left: 16px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 16px 20px;
+    z-index: 800;
+    min-width: 160px;
+    animation: fadeIn 0.5s ease-out;
+}
+
+.legend-title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--text-white);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.82rem;
+    color: var(--text-gray);
+    margin-bottom: 8px;
+}
+
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 6px currentColor;
+}
+
+.legend-count {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 0.75rem;
+    color: var(--text-gray);
+    text-align: center;
+}
+
+/* Danger Banner */
+.danger-banner {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1500;
+    width: 90%;
+    max-width: 580px;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.danger-banner.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.danger-banner.hide {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-30px);
+    pointer-events: none;
+}
+
+.danger-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(255, 71, 87, 0.1));
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 71, 87, 0.3);
+    border-radius: 16px;
+    box-shadow: 0 10px 40px rgba(255, 71, 87, 0.2), 0 0 0 1px rgba(255, 71, 87, 0.1);
+    animation: dangerGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes dangerGlow {
+    from { box-shadow: 0 10px 40px rgba(255, 71, 87, 0.15); }
+    to { box-shadow: 0 10px 40px rgba(255, 71, 87, 0.35); }
+}
+
+.danger-icon {
+    flex-shrink: 0;
+    color: var(--emergency);
+    display: flex;
+    align-items: center;
+}
+
+.danger-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+}
+
+.danger-text strong {
+    font-size: 0.95rem;
+    color: #fca5a5;
+}
+
+.danger-text span {
+    font-size: 0.82rem;
+    color: var(--text-gray);
+    line-height: 1.4;
+}
+
+.danger-close {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: var(--text-gray);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+}
+
+.danger-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+/* Re-center Button */
+.recenter-btn {
+    position: absolute;
+    bottom: 30px;
+    right: 110px;
+    z-index: 800;
+    width: 44px;
+    height: 44px;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: var(--text-white);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.recenter-btn:hover {
+    background: rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.5);
+    transform: scale(1.1);
+}
+
+/* Map Loading Overlay */
+.map-loading-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 23, 42, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 900;
+    gap: 16px;
+    color: var(--text-gray);
+}
+
+.map-loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top: 3px solid var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Location error notice */
+.location-error {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 800;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    color: var(--text-gray);
+    white-space: nowrap;
+}
+
 /* User Landing Page Dashboard */
 .dashboard-container {
     width: 100vw;

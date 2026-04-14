@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import CrimeMap from './CrimeMap';
+import DangerBanner from './DangerBanner';
 
 const API_URL = 'http://localhost:5000';
 
@@ -7,6 +9,7 @@ function UserLanding() {
   const [showSosModal, setShowSosModal] = useState(false);
   const [sosStatus, setSosStatus] = useState('sos'); // 'sos', 'sent'
   const [feedback, setFeedback] = useState('');
+  const [dangerInfo, setDangerInfo] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -72,6 +75,14 @@ function UserLanding() {
     }
   };
 
+  const handleDangerZone = useCallback((info) => {
+    setDangerInfo(info);
+  }, []);
+
+  const handleDismissDanger = useCallback(() => {
+    setDangerInfo(null);
+  }, []);
+
   return (
     <div className="dashboard-container">
       <nav className="dashboard-nav">
@@ -88,22 +99,17 @@ function UserLanding() {
         </div>
       </nav>
 
-      <main className="map-placeholder" id="map">
-        <div className="map-overlay-text">
-          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"
-            style={{ display: 'block', margin: '0 auto 20px', opacity: 0.3 }}>
-            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
-            <line x1="8" y1="2" x2="8" y2="18"></line>
-            <line x1="16" y1="6" x2="16" y2="22"></line>
-          </svg>
-          Interactive Map Loading...
-        </div>
+      {/* Danger Zone Banner */}
+      <DangerBanner danger={dangerInfo} onDismiss={handleDismissDanger} />
+
+      {/* Interactive Crime Map */}
+      <main className="map-area">
+        <CrimeMap onDangerZone={handleDangerZone} />
       </main>
 
       {/* SOS Button */}
-      <button 
-        className="sos-btn" 
+      <button
+        className="sos-btn"
         onClick={() => setShowSosModal(true)}
         style={{
           background: sosStatus === 'sent' ? '#059669' : '',

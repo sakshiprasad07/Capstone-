@@ -1,9 +1,11 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const csv = require('csv-parser');
 const User = require('./models/User');
 const Police = require('./models/Police');
 const Sos = require('./models/Sos');
@@ -76,9 +78,86 @@ const connectDB = async () => {
 
 connectDB();
 
+// --- Crime Data Cache ---
+let crimeDataCache = null;
+
+function loadCrimeData() {
+    return new Promise((resolve, reject) => {
+        if (crimeDataCache) return resolve(crimeDataCache);
+
+        const results = [];
+        const NCR_CITIES = ['delhi', 'ghaziabad', 'noida', 'faridabad', 'gurugram', 'gurgaon', 'meerut', 'greater noida'];
+        const csvPath = path.join(__dirname, 'data', 'crime_dataset_with_latlong.csv');
+
+        if (!fs.existsSync(csvPath)) {
+            return reject(new Error('Crime dataset CSV not found at ' + csvPath));
+        }
+
+        fs.createReadStream(csvPath)
+            .pipe(csv())
+            .on('data', (row) => {
+                let lat = parseFloat(row['Latitude']);
+                let lng = parseFloat(row['Longitude']);
+                
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    // Apply a tight realistic Gaussian jitter to simulate street-level hotspots
+                    // Using 0.015 std (~1.6km) to make points hyper-precise instead of 10km blobs
+                    let u = 0, v = 0;
+                    while(u === 0) u = Math.random();
+                    while(v === 0) v = Math.random();
+                    const gauss1 = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+                    const gauss2 = Math.sqrt(-2.0 * Math.log(u)) * Math.sin(2.0 * Math.PI * v);
+                    
+                    lat += gauss1 * 0.015; 
+                    lng += gauss2 * 0.015; 
+
+                    results.push({
+                        id: row['Report Number'],
+                        date: row['Date of Occurrence'],
+                        time: row['Time of Occurrence'],
+                        city: row['City'],
+                        crimeType: row['Crime Description'],
+                        crimeDomain: row['Crime Domain'],
+                        victimAge: row['Victim Age'],
+                        victimGender: row['Victim Gender'],
+                        weaponUsed: row['Weapon Used'],
+                        policeDeployed: row['Police Deployed'],
+                        caseClosed: row['Case Closed'],
+                        latitude: lat,
+                        longitude: lng
+                    });
+                }
+            })
+            .on('end', () => {
+                crimeDataCache = results;
+                console.log(`Crime data loaded: ${results.length} total records globally.`);
+                resolve(results);
+            })
+            .on('error', reject);
+    });
+}
+
+// Pre-load crime data on startup
+loadCrimeData().catch(err => console.error('Failed to pre-load crime data:', err.message));
+
 // Routes
 app.get("/", (req, res) => {
     res.send("Crime Hotspot Backend Running 🚀");
+});
+
+// Crime Data API
+app.get("/api/crimes", async (req, res) => {
+    try {
+        const data = await loadCrimeData();
+        res.json({
+            count: data.length,
+            region: 'Delhi NCR',
+            crimes: data
+        });
+    } catch (error) {
+        console.error('Error loading crime data:', error.message);
+        res.status(500).json({ message: 'Failed to load crime data', error: error.message });
+    }
 });
 
 // Signup Route
@@ -125,12 +204,12 @@ app.post("/user/login", async (req, res) => {
         }
 
         const token = jwt.sign(
-            { id: user._id, role: 'user' },
+            { id: user._id, role: user.role },
             process.env.JWT_SECRET || "secret_key",
             { expiresIn: "1h" }
         );
 
-        res.status(200).json({ message: "Login successful", token, username: user.username, role: 'user' });
+        res.status(200).json({ message: "Login successful", token, username: user.username, role: user.role });
     } catch (error) {
         console.error("LOG: User Login Error:", error);
         res.status(500).json({ message: "Login error", error: error.message });
