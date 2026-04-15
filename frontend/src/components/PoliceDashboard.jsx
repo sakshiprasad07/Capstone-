@@ -8,7 +8,7 @@ function PoliceDashboard() {
   const [activeTab, setActiveTab] = useState('sos');
   const [username, setUsername] = useState('Officer');
   const [errorMessage, setErrorMessage] = useState('');
-  const [dangerInfo, setDangerInfo] = useState(null);
+
 
   const [sosAlerts, setSosAlerts] = useState([]);
   const [reportAlerts, setReportAlerts] = useState([]);
@@ -85,7 +85,9 @@ function PoliceDashboard() {
   };
 
   const handleDangerZone = useCallback((info) => {
-    setDangerInfo(info);
+    // This callback is currently used by CrimeMap for map danger updates.
+    // Add UI handling here later if you want a danger banner on the police dashboard.
+    console.debug('Danger zone info:', info);
   }, []);
 
   // FIX: handleStatusUpdate now uses functional updater so it's never stale,

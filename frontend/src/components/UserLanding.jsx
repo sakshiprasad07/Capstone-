@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import CrimeMap from './CrimeMap';
-import DangerBanner from './DangerBanner';
+
 
 const API_URL = 'http://localhost:5000';
 
@@ -14,7 +13,7 @@ function UserLanding() {
   const [reportTime, setReportTime] = useState('');
   const [reportDetails, setReportDetails] = useState('');
   const [feedback, setFeedback] = useState('');
-  const [dangerInfo, setDangerInfo] = useState(null);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -136,13 +135,7 @@ function UserLanding() {
     }
   };
 
-  const handleDangerZone = useCallback((info) => {
-    setDangerInfo(info);
-  }, []);
 
-  const handleDismissDanger = useCallback(() => {
-    setDangerInfo(null);
-  }, []);
 
   return (
     <div className="dashboard-container">
@@ -162,12 +155,12 @@ function UserLanding() {
         </div>
       </nav>
 
-      {/* Danger Zone Banner */}
-      <DangerBanner danger={dangerInfo} onDismiss={handleDismissDanger} />
-
-      {/* Interactive Crime Map */}
-      <main className="map-area">
-        <CrimeMap onDangerZone={handleDangerZone} />
+      {/* Featured Section (Removed Mapping) */}
+      <main className="feature-placeholder" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-dark)' }}>
+        <div style={{ textAlign: 'center', opacity: 0.5 }}>
+           <h3 style={{ color: 'var(--text-gray)' }}>Public Map View Disabled</h3>
+           <p>We are reimagining this space. Stay tuned for new features.</p>
+        </div>
       </main>
 
       {/* SOS Button */}
