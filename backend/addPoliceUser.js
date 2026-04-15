@@ -17,7 +17,10 @@ const addPoliceUser = async () => {
         // Check if user already exists
         const existingUser = await Police.findOne({ username });
         if (existingUser) {
-            console.log("Police user 'sakshi' already exists");
+            console.log("Police user 'sakshi' already exists, updating to police role");
+            existingUser.role = 'police';
+            await existingUser.save();
+            console.log("Police user 'sakshi' updated to police role successfully ✅");
             await mongoose.connection.close();
             return;
         }

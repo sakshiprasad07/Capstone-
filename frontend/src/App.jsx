@@ -10,8 +10,7 @@ function PrivateRoute({ children, role }) {
   const userRole = localStorage.getItem('role');
   
   if (!token) return <Navigate to="/" />;
-  // Allow admins to bypass route-specific role restrictions
-  if (role && role !== userRole && userRole !== 'admin') return <Navigate to="/" />;
+  if (role && role !== userRole) return <Navigate to="/" />;
   
   return children;
 }

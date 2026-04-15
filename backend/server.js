@@ -4,7 +4,7 @@ const fs = require('fs');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const csv = require('csv-parser');
 const User = require('./models/User');
 const Police = require('./models/Police');
@@ -219,7 +219,6 @@ app.post("/user/login", async (req, res) => {
 
 // Police Login Route
 app.post("/police/login", async (req, res) => {
-    // ... same as before
     console.log("LOG: Police Login request for:", req.body.username);
     try {
         const { username, password } = req.body;
@@ -235,12 +234,12 @@ app.post("/police/login", async (req, res) => {
         }
 
         const token = jwt.sign(
-            { id: officer._id, role: 'police' },
+            { id: officer._id, role: officer.role },
             process.env.JWT_SECRET || "secret_key",
             { expiresIn: "1h" }
         );
 
-        res.status(200).json({ message: "Authentication successful", token, username: officer.username, role: 'police' });
+        res.status(200).json({ message: "Authentication successful", token, username: officer.username, role: officer.role });
     } catch (error) {
         console.error("LOG: Police Login Error:", error);
         res.status(500).json({ message: "Authentication error", error: error.message });
@@ -336,6 +335,8 @@ app.post('/reports', async (req, res) => {
             desc,
             reportType,
             location,
+            latitude,
+            longitude,
             incidentTime,
             details
         } = req.body;
@@ -347,6 +348,8 @@ app.post('/reports', async (req, res) => {
             desc: desc || `Seen at: ${incidentTime || 'Unknown time'}\nDetails: ${details || 'No additional info provided.'}`,
             reportType: reportType || '',
             location: location || '',
+            latitude: latitude || null,
+            longitude: longitude || null,
             incidentTime: incidentTime || '',
             details: details || ''
         });

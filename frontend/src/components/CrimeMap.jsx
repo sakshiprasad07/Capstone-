@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { MapContainer, TileLayer, useMap, Popup, CircleMarker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, useMap, Popup, CircleMarker, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -105,6 +105,88 @@ function UserLocationMarker({ position }) {
   );
 }
 
+// ─── SOS markers ──────────────────────────────────────────────────────────────
+function SosMarkers({ sosAlerts, excludeIds = [] }) {
+  return (
+    <>
+      {sosAlerts.map((alert) => {
+        const alertId = alert._id || alert.id;
+        if (excludeIds.includes(alertId) || !alert.latitude || !alert.longitude) return null;
+        const statusColor = alert.status === 'pending' ? '#ef4444' :
+                           alert.status === 'acknowledged' ? '#eab308' : '#10b981';
+        return (
+          <CircleMarker
+            key={alertId}
+            center={[alert.latitude, alert.longitude]}
+            radius={10}
+            pathOptions={{ color: statusColor, fillColor: statusColor, fillOpacity: 0.9, weight: 3 }}
+          >
+            <Popup>
+              <div style={{ color: '#1e293b', fontWeight: 600 }}>
+                🚨 EMERGENCY SOS
+              </div>
+              <div style={{ fontSize: '0.8rem', marginTop: 4 }}>
+                <div><strong>Victim:</strong> {alert.username || 'Unknown'}</div>
+                <div><strong>Message:</strong> {alert.message}</div>
+                <div><strong>Status:</strong> {alert.status.toUpperCase()}</div>
+                <div><strong>Location:</strong> {Number(alert.latitude).toFixed(5)}, {Number(alert.longitude).toFixed(5)}</div>
+                {alert.createdAt && (
+                  <div><strong>Time:</strong> {new Date(alert.createdAt).toLocaleString()}</div>
+                )}
+              </div>
+            </Popup>
+          </CircleMarker>
+        );
+      })}
+    </>
+  );
+}
+
+function SimulatedSosMarker({ position, alert, onMove }) {
+  if (!position) return null;
+
+  const icon = L.divIcon({
+    className: 'victim-simulator-icon',
+    html: `<div style="width:30px;height:30px;border-radius:50%;background:#f97316;display:flex;align-items:center;justify-content:center;color:#ffffff;font-weight:700;border:2px solid rgba(255,255,255,0.9);box-shadow:0 0 0 6px rgba(249,115,22,0.35);">V</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -14]
+  });
+
+  return (
+    <Marker
+      position={position}
+      icon={icon}
+      draggable={true}
+      eventHandlers={{
+        dragend: (e) => {
+          const latlng = e.target.getLatLng();
+          onMove([latlng.lat, latlng.lng]);
+        }
+      }}
+    >
+      <Popup>
+        <div style={{ fontWeight: 600, marginBottom: 6 }}>🚨 Simulated SOS</div>
+        <div style={{ marginBottom: 4 }}><strong>Victim:</strong> {alert?.username || 'Simulated Incident'}</div>
+        <div style={{ marginBottom: 4 }}><strong>Status:</strong> {alert?.status?.toUpperCase() || 'PENDING'}</div>
+        <div style={{ marginBottom: 4 }}><strong>Location:</strong> {position[0].toFixed(5)}, {position[1].toFixed(5)}</div>
+        {alert?.createdAt && (
+          <div><strong>Time:</strong> {new Date(alert.createdAt).toLocaleString()}</div>
+        )}
+      </Popup>
+    </Marker>
+  );
+}
+
+function MapClickHandler({ onClick }) {
+  useMapEvents({
+    click(e) {
+      onClick([e.latlng.lat, e.latlng.lng]);
+    }
+  });
+  return null;
+}
+
 // ─── Auto-center ──────────────────────────────────────────────────────────────
 function AutoCenter({ position, done }) {
   const map = useMap();
@@ -117,27 +199,19 @@ function AutoCenter({ position, done }) {
   return null;
 }
 
-// ─── Map click interceptor (admin teleport) ────────────────────────────────────
-function MapClickInterceptor({ demoMode, onMapClick }) {
-  useMapEvents({
-    click(e) {
-      if (demoMode) onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng });
-    },
-  });
-  return null;
-}
-
 // ─── Main CrimeMap component ───────────────────────────────────────────────────
-export default function CrimeMap({ onDangerZone }) {
+export default function CrimeMap({ onDangerZone, sosAlerts = [], showVictimSimulator = false }) {
   const [crimes, setCrimes]               = useState([]);
   const [clusters, setClusters]           = useState([]);
   const [userPos, setUserPos]             = useState(null);
+  const [victimPos, setVictimPos]         = useState(null);
+  const [simulatedSosAlert, setSimulatedSosAlert] = useState(null);
   const [locationError, setLocationError] = useState(null);
   const [loading, setLoading]             = useState(true);
   const autoCentered                      = useRef(false);
   const cooldowns                         = useRef({});
 
-  const isAdmin = localStorage.getItem('role') === 'admin';
+  const isLoggedIn = !!localStorage.getItem('token');
 
   // Fetch crime data once
   useEffect(() => {
@@ -162,28 +236,49 @@ export default function CrimeMap({ onDangerZone }) {
       return;
     }
 
-    if (isAdmin) setUserPos([28.6139, 77.209]); // Default: New Delhi
-
     const watchId = navigator.geolocation.watchPosition(
       pos => {
-        if (!isAdmin) {
-          setUserPos([pos.coords.latitude, pos.coords.longitude]);
-          setLocationError(null);
-        }
+        const current = [pos.coords.latitude, pos.coords.longitude];
+        setUserPos(current);
+        setLocationError(null);
       },
-      err => { if (!isAdmin) setLocationError(err.message); },
+      err => { setLocationError(err.message); },
       { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 }
     );
 
     return () => navigator.geolocation.clearWatch(watchId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+  }, []);
+
+  useEffect(() => {
+    if (!showVictimSimulator) return;
+
+    const primarySos = sosAlerts.length > 0 ? sosAlerts[0] : null;
+    if (primarySos) {
+      setSimulatedSosAlert(primarySos);
+      if (!victimPos) {
+        setVictimPos([primarySos.latitude, primarySos.longitude]);
+      }
+    } else if (userPos && !victimPos) {
+      setVictimPos(userPos);
+      setSimulatedSosAlert(null);
+    }
+  }, [showVictimSimulator, sosAlerts, userPos, victimPos]);
+
+  useEffect(() => {
+    if (!showVictimSimulator || !victimPos) return;
+    setSimulatedSosAlert(prev => prev ? {
+      ...prev,
+      latitude: victimPos[0],
+      longitude: victimPos[1]
+    } : prev);
+  }, [showVictimSimulator, victimPos]);
 
   // Geofencing — triggers danger banner if user is near a crime cluster
   const checkGeofence = useCallback(() => {
     if (!userPos || clusters.length === 0 || !onDangerZone) return;
     const DANGER_RADIUS = 500; // metres
-    const COOLDOWN_MS   = isAdmin ? 0 : 30 * 60 * 1000;
+    const COOLDOWN_MS   = 30 * 60 * 1000;
     const THRESHOLD     = 3;
     const now           = Date.now();
 
@@ -203,7 +298,7 @@ export default function CrimeMap({ onDangerZone }) {
         }
       }
     }
-  }, [userPos, clusters, onDangerZone, isAdmin]);
+  }, [userPos, clusters, onDangerZone]);
 
   useEffect(() => { checkGeofence(); }, [checkGeofence]);
 
@@ -226,19 +321,6 @@ export default function CrimeMap({ onDangerZone }) {
         </div>
       )}
 
-      {isAdmin && (
-        <div style={{
-          position: 'absolute', top: 20, right: 20, zIndex: 1000,
-          background: 'rgba(255,0,85,0.95)', padding: '8px 16px', borderRadius: 20,
-          border: '2px solid rgba(255,255,255,0.5)', color: 'white',
-          boxShadow: '0 4px 20px rgba(255,0,85,0.5)', backdropFilter: 'blur(10px)',
-          fontFamily: "'Outfit',sans-serif", fontSize: 12, fontWeight: 'bold',
-          pointerEvents: 'none',
-        }}>
-          🚨 ADMIN TELEPORTER ACTIVE — CLICK MAP TO MOVE
-        </div>
-      )}
-
       <MapContainer
         center={INDIA_CENTER}
         zoom={5}
@@ -250,42 +332,75 @@ export default function CrimeMap({ onDangerZone }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
         />
 
-        <HeatmapLayer points={heatPoints} />
-        <UserLocationMarker position={userPos} />
+        {!showVictimSimulator && <HeatmapLayer points={heatPoints} />}
+        {userPos && <UserLocationMarker position={userPos} />}
+        {showVictimSimulator && (
+          <>
+            <MapClickHandler onClick={setVictimPos} />
+            <SimulatedSosMarker position={victimPos} alert={simulatedSosAlert} onMove={setVictimPos} />
+          </>
+        )}
+        {!showVictimSimulator && (
+          <SosMarkers
+            sosAlerts={sosAlerts}
+          />
+        )}
         <AutoCenter position={userPos} done={autoCentered} />
-        <MapClickInterceptor
-          demoMode={isAdmin}
-          onMapClick={pos => setUserPos([pos.lat, pos.lng])}
-        />
       </MapContainer>
 
       {/* Legend */}
       <div className="map-legend">
-        <div className="legend-title">Crime Density</div>
-        <div className="legend-item"><span className="legend-dot" style={{ background: '#ef4444' }} /> High Risk</div>
-        <div className="legend-item"><span className="legend-dot" style={{ background: '#eab308' }} /> Moderate</div>
-        <div className="legend-item"><span className="legend-dot" style={{ background: '#10b981' }} /> Low</div>
+        <div className="legend-title">Crime Density & SOS Alerts</div>
+        <div className="legend-item"><span className="legend-dot" style={{ background: '#ef4444' }} /> High Risk / Emergency SOS</div>
+        <div className="legend-item"><span className="legend-dot" style={{ background: '#eab308' }} /> Moderate / Acknowledged</div>
+        <div className="legend-item"><span className="legend-dot" style={{ background: '#10b981' }} /> Low / Resolved</div>
         <div className="legend-item"><span className="legend-dot" style={{ background: '#3b82f6' }} /> Safe Zone</div>
         {!loading && crimes.length > 0 && (
-          <div className="legend-count">{crimes.length.toLocaleString()} records</div>
+          <div className="legend-count">{crimes.length.toLocaleString()} historical records</div>
+        )}
+        {sosAlerts.length > 0 && (
+          <div className="legend-count">{sosAlerts.length} active SOS alerts</div>
         )}
       </div>
 
       {/* Re-center button */}
+      {showVictimSimulator && (
+        <div className="simulator-control" style={{
+          position: 'absolute', bottom: 100, left: 16, zIndex: 850,
+          background: 'rgba(7, 12, 20, 0.9)', color: '#fff', padding: '10px 14px',
+          borderRadius: 12, boxShadow: '0 12px 30px rgba(0,0,0,0.25)',
+          maxWidth: 280, fontSize: '0.88rem', lineHeight: 1.4,
+          pointerEvents: 'auto'
+        }}>
+          <strong style={{ display: 'block', marginBottom: 6 }}>Victim Simulator</strong>
+          Click the map to place the SOS marker, or drag the orange marker to move it.
+          {userPos && (
+            <button
+              type="button"
+              style={{
+                marginTop: 10, display: 'inline-flex', alignItems: 'center',
+                background: '#f97316', color: '#fff', border: 'none', borderRadius: 8,
+                padding: '6px 10px', cursor: 'pointer', fontSize: '0.82rem'
+              }}
+              onClick={() => setVictimPos(userPos)}
+            >
+              Reset to current location
+            </button>
+          )}
+        </div>
+      )}
       {userPos && (
         <button
+          type="button"
           className="recenter-btn"
           title="Re-center on your location"
+          style={{ pointerEvents: 'auto' }}
           onClick={() => {
-            if (!isAdmin) {
-              autoCentered.current = false;
-              navigator.geolocation.getCurrentPosition(
-                pos => setUserPos([pos.coords.latitude, pos.coords.longitude]),
-                () => alert('Please allow location access.')
-              );
-            } else {
-              alert('Admin Teleport Mode: click anywhere on the map to move.');
-            }
+            autoCentered.current = false;
+            navigator.geolocation.getCurrentPosition(
+              pos => setUserPos([pos.coords.latitude, pos.coords.longitude]),
+              () => alert('Please allow location access.')
+            );
           }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
@@ -296,7 +411,7 @@ export default function CrimeMap({ onDangerZone }) {
         </button>
       )}
 
-      {locationError && !isAdmin && (
+      {locationError && (
         <div className="location-error">
           📍 Location unavailable — showing India map
         </div>

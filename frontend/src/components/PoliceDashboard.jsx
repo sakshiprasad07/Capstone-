@@ -230,7 +230,7 @@ function PoliceDashboard() {
 
         {/* FIX: Police dashboard now shows the real CrimeMap instead of a placeholder */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-          <CrimeMap onDangerZone={handleDangerZone} />
+          <CrimeMap onDangerZone={handleDangerZone} sosAlerts={sosAlerts} showVictimSimulator={true} />
         </div>
       </main>
 

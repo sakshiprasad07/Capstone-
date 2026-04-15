@@ -80,7 +80,7 @@ function UserLanding() {
     }
   };
 
-  const sendReport = async () => {
+  const sendReport = async (latitude = null, longitude = null) => {
     const username = localStorage.getItem('username') || 'Anonymous';
     const title = `${reportType} at ${reportLocation || 'Unknown location'}`;
     const desc = `Seen at: ${reportTime || 'Unknown time'}\nDetails: ${reportDetails || 'No additional information provided.'}`;
@@ -95,6 +95,8 @@ function UserLanding() {
           desc,
           reportType,
           location: reportLocation,
+          latitude,
+          longitude,
           incidentTime: reportTime,
           details: reportDetails
         })
@@ -120,7 +122,18 @@ function UserLanding() {
 
   const handleSubmitReport = (e) => {
     e.preventDefault();
-    sendReport();
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          sendReport(position.coords.latitude, position.coords.longitude);
+        },
+        () => {
+          sendReport();
+        }
+      );
+    } else {
+      sendReport();
+    }
   };
 
   const handleDangerZone = useCallback((info) => {

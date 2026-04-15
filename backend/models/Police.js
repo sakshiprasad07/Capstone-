@@ -13,6 +13,7 @@ const policeSchema = new mongoose.Schema({
     },
     role: {
         type: String,
+        enum: ['police', 'admin'],
         default: 'police'
     }
 }, { timestamps: true });

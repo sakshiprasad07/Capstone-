@@ -25,6 +25,14 @@ const crimeReportSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  latitude: {
+    type: Number,
+    required: false
+  },
+  longitude: {
+    type: Number,
+    required: false
+  },
   incidentTime: {
     type: String,
     trim: true
