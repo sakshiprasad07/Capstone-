@@ -7,37 +7,7 @@ import 'leaflet/dist/leaflet.css';
 window.L = L;
 import 'leaflet.heat';
 
-// ─── Haversine distance (meters) ──────────────────────────────────────────────
-function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
-// ─── Grid-based clustering (for geofencing only, not markers) ─────────────────
-// gridSize = 0.05° ≈ 5 km — large enough to beat the 1.6 km server-side jitter
-function computeClusters(crimes, gridSize = 0.05) {
-  const grid = {};
-  crimes.forEach(c => {
-    const key = `${Math.round(c.latitude / gridSize)}_${Math.round(c.longitude / gridSize)}`;
-    if (!grid[key]) grid[key] = { lat: 0, lng: 0, count: 0, crimes: [] };
-    grid[key].lat += c.latitude;
-    grid[key].lng += c.longitude;
-    grid[key].count++;
-    grid[key].crimes.push(c);
-  });
-  return Object.values(grid).map(g => ({
-    lat: g.lat / g.count,
-    lng: g.lng / g.count,
-    count: g.count,
-    crimes: g.crimes,
-  }));
-}
 
 // ─── Heatmap layer ─────────────────────────────────────────────────────────────
 function HeatmapLayer({ points }) {
@@ -128,14 +98,12 @@ function MapClickInterceptor({ demoMode, onMapClick }) {
 }
 
 // ─── Main CrimeMap component ───────────────────────────────────────────────────
-export default function CrimeMap({ onDangerZone }) {
+export default function CrimeMap() {
   const [crimes, setCrimes]               = useState([]);
-  const [clusters, setClusters]           = useState([]);
   const [userPos, setUserPos]             = useState(null);
   const [locationError, setLocationError] = useState(null);
   const [loading, setLoading]             = useState(true);
   const autoCentered                      = useRef(false);
-  const cooldowns                         = useRef({});
 
   const isAdmin = localStorage.getItem('role') === 'admin';
 
@@ -146,7 +114,6 @@ export default function CrimeMap({ onDangerZone }) {
       .then(data => {
         const list = data.crimes || [];
         setCrimes(list);
-        setClusters(computeClusters(list));
         setLoading(false);
       })
       .catch(err => {
@@ -179,33 +146,7 @@ export default function CrimeMap({ onDangerZone }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdmin]);
 
-  // Geofencing — triggers danger banner if user is near a crime cluster
-  const checkGeofence = useCallback(() => {
-    if (!userPos || clusters.length === 0 || !onDangerZone) return;
-    const DANGER_RADIUS = 500; // metres
-    const COOLDOWN_MS   = isAdmin ? 0 : 30 * 60 * 1000;
-    const THRESHOLD     = 3;
-    const now           = Date.now();
 
-    for (const cluster of clusters) {
-      if (cluster.count < THRESHOLD) continue;
-      const dist = getDistance(userPos[0], userPos[1], cluster.lat, cluster.lng);
-      const key  = `${cluster.lat.toFixed(3)}_${cluster.lng.toFixed(3)}`;
-      if (dist < DANGER_RADIUS) {
-        if (!cooldowns.current[key] || now - cooldowns.current[key] > COOLDOWN_MS) {
-          cooldowns.current[key] = now;
-          onDangerZone({
-            distance:   Math.round(dist),
-            crimeCount: cluster.count,
-            area:       cluster.crimes[0]?.city || 'Unknown Area',
-          });
-          break;
-        }
-      }
-    }
-  }, [userPos, clusters, onDangerZone, isAdmin]);
-
-  useEffect(() => { checkGeofence(); }, [checkGeofence]);
 
   // Build heatmap points weighted by crime domain
   const heatPoints = crimes.map(c => [
