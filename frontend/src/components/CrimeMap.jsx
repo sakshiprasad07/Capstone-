@@ -2,10 +2,13 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, useMap, Popup, CircleMarker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
 // Assign L globally so leaflet.heat can attach itself
 window.L = L;
 import 'leaflet.heat';
+import 'leaflet.markercluster';
 
 // ─── Haversine distance (meters) ──────────────────────────────────────────────
 function getDistance(lat1, lon1, lat2, lon2) {
@@ -82,6 +85,119 @@ function HeatmapLayer({ points }) {
   return null;
 }
 
+// ─── Police stations layer (MarkerCluster) ─────────────────────────────────────
+function PoliceStationsLayer({ enabled, onStationsLoaded }) {
+  const map = useMap();
+  const clusterRef = useRef(null);
+  const pendingFetch = useRef(null);
+
+  const policeIcon = useRef(
+    L.divIcon({
+      className: 'police-pin',
+      html: `<div style="
+        width: 10px; height: 10px;
+        background: #38bdf8;
+        border: 2px solid rgba(255,255,255,0.95);
+        border-radius: 50%;
+        box-shadow: 0 0 8px rgba(56,189,248,0.35);
+      "></div>`,
+      iconSize: [10, 10],
+      iconAnchor: [5, 5],
+      popupAnchor: [0, -8],
+    })
+  );
+
+  const clearLayer = useCallback(() => {
+    if (clusterRef.current) {
+      clusterRef.current.clearLayers();
+      map.removeLayer(clusterRef.current);
+      clusterRef.current = null;
+    }
+  }, [map]);
+
+  const fetchStationsForBounds = useCallback(async () => {
+    if (!enabled) return;
+
+    if (!clusterRef.current) {
+      clusterRef.current = L.layerGroup();
+      clusterRef.current.addTo(map);
+    } else {
+      clusterRef.current.clearLayers();
+    }
+
+    const b = map.getBounds();
+    const south = b.getSouth();
+    const west = b.getWest();
+    const north = b.getNorth();
+    const east = b.getEast();
+
+    const controller = new AbortController();
+    pendingFetch.current?.abort?.();
+    pendingFetch.current = controller;
+
+    const url = `/api/stations?bbox=${south},${west},${north},${east}&limit=20000`;
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`Stations request failed: ${res.status}`);
+    const data = await res.json();
+    const stations = Array.isArray(data.stations) ? data.stations : [];
+    const stationHeatData = stations
+      .filter(s => typeof s.lat === 'number' && typeof s.lon === 'number')
+      .map(s => [s.lat, s.lon, 0.75]);
+
+    onStationsLoaded?.(stationHeatData);
+
+    stations.forEach(s => {
+      const name = s.name || 'Police Station';
+      const address = s.address || s.tags?.['addr:full'] || '';
+      const phone = s.phone || s.tags?.['contact:phone'] || '';
+      const popup = `
+        <div style="min-width: 220px; color: #0f172a;">
+          <div style="font-weight: 800; margin-bottom: 4px;">${name}</div>
+          ${address ? `<div style="margin-bottom: 4px; opacity: 0.9;">${address}</div>` : ''}
+          ${phone ? `<div><b>Phone:</b> ${phone}</div>` : ''}
+        </div>
+      `;
+      const m = L.marker([s.lat, s.lon], { icon: policeIcon.current }).bindPopup(popup);
+      clusterRef.current.addLayer(m);
+    });
+  }, [enabled, map, onStationsLoaded]);
+
+  useEffect(() => {
+    if (!map) return;
+    if (!enabled) {
+      onStationsLoaded?.([]);
+      clearLayer();
+      return;
+    }
+
+    fetchStationsForBounds().catch(err => {
+      if (err?.name !== 'AbortError') console.warn('Failed to load stations:', err);
+    });
+
+    return () => {
+      pendingFetch.current?.abort?.();
+      clearLayer();
+    };
+  }, [map, enabled, fetchStationsForBounds, clearLayer]);
+
+  useMapEvents({
+    moveend() {
+      if (!enabled) return;
+      fetchStationsForBounds().catch(err => {
+        if (err?.name !== 'AbortError') console.warn('Failed to load stations:', err);
+      });
+    },
+    zoomend() {
+      if (!enabled) return;
+      fetchStationsForBounds().catch(err => {
+        if (err?.name !== 'AbortError') console.warn('Failed to load stations:', err);
+      });
+    },
+  });
+
+  return null;
+}
+
 // ─── User location marker ──────────────────────────────────────────────────────
 function UserLocationMarker({ position }) {
   if (!position) return null;
@@ -134,6 +250,9 @@ export default function CrimeMap({ onDangerZone }) {
   const [userPos, setUserPos]             = useState(null);
   const [locationError, setLocationError] = useState(null);
   const [loading, setLoading]             = useState(true);
+  const [showHeatmap, setShowHeatmap]     = useState(true);
+  const [showStations, setShowStations]   = useState(true);
+  const [stationHeatPoints, setStationHeatPoints] = useState([]);
   const autoCentered                      = useRef(false);
   const cooldowns                         = useRef({});
 
@@ -208,12 +327,15 @@ export default function CrimeMap({ onDangerZone }) {
   useEffect(() => { checkGeofence(); }, [checkGeofence]);
 
   // Build heatmap points weighted by crime domain
-  const heatPoints = crimes.map(c => [
-    c.latitude,
-    c.longitude,
-    c.crimeDomain === 'Violent Crime' ? 1.0 :
-    c.crimeDomain === 'Fire Accident' ? 0.7 : 0.5,
-  ]);
+  const heatPoints = [
+    ...crimes.map(c => [
+      c.latitude,
+      c.longitude,
+      c.crimeDomain === 'Violent Crime' ? 1.0 :
+      c.crimeDomain === 'Fire Accident' ? 0.7 : 0.5,
+    ]),
+    ...stationHeatPoints,
+  ];
 
   const INDIA_CENTER = [22.9074, 79.1469];
 
@@ -250,7 +372,8 @@ export default function CrimeMap({ onDangerZone }) {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
         />
 
-        <HeatmapLayer points={heatPoints} />
+        {showHeatmap && <HeatmapLayer points={heatPoints} />}
+        <PoliceStationsLayer enabled={showStations} onStationsLoaded={setStationHeatPoints} />
         <UserLocationMarker position={userPos} />
         <AutoCenter position={userPos} done={autoCentered} />
         <MapClickInterceptor
@@ -258,6 +381,33 @@ export default function CrimeMap({ onDangerZone }) {
           onMapClick={pos => setUserPos([pos.lat, pos.lng])}
         />
       </MapContainer>
+
+      {/* Layer toggles */}
+      <div style={{
+        position: 'absolute',
+        top: 18,
+        left: 18,
+        zIndex: 1000,
+        background: 'rgba(2,6,23,0.75)',
+        border: '1px solid rgba(148,163,184,0.25)',
+        color: '#e2e8f0',
+        padding: '10px 12px',
+        borderRadius: 12,
+        backdropFilter: 'blur(10px)',
+        fontFamily: "'Outfit',sans-serif",
+        fontSize: 13,
+        boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
+      }}>
+        <div style={{ fontWeight: 800, marginBottom: 6 }}>Layers</div>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
+          <input type="checkbox" checked={showHeatmap} onChange={e => setShowHeatmap(e.target.checked)} />
+          <span>Heatmap</span>
+        </label>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', marginTop: 6 }}>
+          <input type="checkbox" checked={showStations} onChange={e => setShowStations(e.target.checked)} />
+          <span>Police stations</span>
+        </label>
+      </div>
 
       {/* Legend */}
       <div className="map-legend">

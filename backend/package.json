@@ -7,7 +7,8 @@
     "start": "node server.js",
     "test": "echo \"No tests yet\"",
     "build": "echo \"Build complete\"",
-    "dev": "npx nodemon server.js"
+    "dev": "npx nodemon server.js",
+    "import:stations": "node scripts/importPoliceStations.js"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +22,7 @@
     "express": "^5.2.1",
     "google-auth-library": "^10.5.0",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.2.1"
+    "mongoose": "^9.2.1",
+    "pg": "^8.16.3"
   }
 }

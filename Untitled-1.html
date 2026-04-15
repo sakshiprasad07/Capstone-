@@ -1,0 +1,17 @@
+<HeatmapLayer
+  data={heatPoints.map(point => new window.google.maps.LatLng(point.lat, point.lng))}
+/>
+
+{policeStations.map(station => (
+  <Marker
+    key={station.id}
+    position={{
+      lat: station.latitude ?? station.lat,
+      lng: station.longitude ?? station.lng
+    }}
+    icon={{
+      url: '/police-marker.png',
+      scaledSize: new window.google.maps.Size(30, 30)
+    }}
+  />
+))}

@@ -10,6 +10,7 @@ const User = require('./models/User');
 const Police = require('./models/Police');
 const Sos = require('./models/Sos');
 const CrimeReport = require('./models/CrimeReport');
+const stationsRouter = require('./routes/stations');
 const { OAuth2Client } = require('google-auth-library');
 require('dotenv').config();
 
@@ -160,6 +161,9 @@ app.get("/api/crimes", async (req, res) => {
         res.status(500).json({ message: 'Failed to load crime data', error: error.message });
     }
 });
+
+// Police stations (Postgres/PostGIS)
+app.use('/api', stationsRouter);
 
 // Signup Route
 app.post("/signup", async (req, res) => {
