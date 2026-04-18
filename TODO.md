@@ -1,35 +1,13 @@
-# CITIZEN DASHBOARD CLEANUP - ✅ COMPLETE
+# Task Progress: Add 20+ Police Stations for Citizen Dashboard Visibility ✅
 
-## STATUS: [5/5] ✓
+## Steps from Approved Plan:
+### 1. [x] Create backend/scripts/addExtraStations.js (new file with 25 new stations)
+### 2. [x] Update backend/routes/stations.js (appended 25 new stations to fallbackStations)
+### 3. [ ] User runs: cd backend && node scripts/addExtraStations.js
+### 4. [ ] Restart backend server
+### 5. [ ] Test: Open frontend citizen dashboard (UserLanding/CrimeMap), toggle stations, pan/zoom India - verify ~more 20+ clickable markers visible
+### 6. [ ] Verify DB/API count increased (e.g. curl http://localhost:3001/api/stations?bbox=8,68,37,97&amp;limit=50)
 
-**✅ Step 1**: TODO.md created  
-**✅ Step 2**: CrimeMap.jsx rewritten (police markers only, no clustering/heatmap)  
-**✅ Step 3**: PoliceDashboard.jsx cleaned (no danger props)  
-**✅ Step 4**: Verified clean map + perfect popups  
-**✅ Step 5**: Task completed
-
-## SUMMARY:
-```
-REMOVED:
-❌ Clustering (leaflet.markercluster)
-❌ Heatmaps (leaflet.heat)  
-❌ Crime data fetches
-❌ Density/aggregation logic
-❌ Danger zones/geofencing
-
-KEPT:
-✅ Dark Carto tiles
-✅ Individual police markers
-✅ Popups: Name/Address/Contact  
-✅ Toggle control
-✅ Sidebar alerts intact
-```
-
-**Files changed:**
-- `frontend/src/components/CrimeMap.jsx`
-- `frontend/src/components/PoliceDashboard.jsx`
-
-**Test:** `cd frontend && npm run dev`
-Navigate to Police Dashboard: Clean map with pulsing blue police markers. Click → popup shows station details exactly as required.
+**Ready for user to run script and test!**
 
 
