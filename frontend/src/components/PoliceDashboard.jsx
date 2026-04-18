@@ -13,6 +13,13 @@ function PoliceDashboard() {
   const [sosAlerts, setSosAlerts] = useState([]);
   const [reportAlerts, setReportAlerts] = useState([]);
 
+  // Admin Simulator state
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [showAdminAuth, setShowAdminAuth] = useState(false);
+  const [adminId, setAdminId] = useState('');
+  const [adminPass, setAdminPass] = useState('');
+  const [adminError, setAdminError] = useState('');
+
   const navigate = useNavigate();
 
   const fetchSosAlerts = useCallback(async () => {
@@ -220,17 +227,108 @@ function PoliceDashboard() {
             <span id="badgeInfo" style={{ color: 'var(--text-gray)', fontSize: '0.9rem', marginRight: '20px' }}>
               Officer ID: {username}
             </span>
+            <button
+              onClick={() => isAdminMode ? setIsAdminMode(false) : setShowAdminAuth(true)}
+              style={{
+                background: isAdminMode ? 'rgba(249, 115, 22, 0.2)' : 'rgba(255,255,255,0.05)',
+                color: isAdminMode ? '#fb923c' : 'var(--text-gray)',
+                border: isAdminMode ? '1px solid #fb923c' : '1px solid rgba(255,255,255,0.1)',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                marginRight: '15px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              {isAdminMode ? 'Disable Simulator' : 'Admin Simulator'}
+            </button>
             <a href="/" id="logoutBtn" onClick={handleLogout} style={{ color: 'var(--text-gray)', textDecoration: 'none', alignSelf: 'center', fontWeight: 600 }}>
               Logout
             </a>
           </div>
         </div>
 
-        {/* FIX: Police dashboard now shows the real CrimeMap instead of a placeholder */}
+        {/* Main Crime Map with Admin & SOS props */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-          <CrimeMap />
+          <CrimeMap sosAlerts={sosAlerts} isAdminMode={isAdminMode} />
         </div>
       </main>
+
+      {/* Admin Auth Modal */}
+      {showAdminAuth && (
+        <div className="modal-overlay" style={{ display: 'flex', zIndex: 2000 }}>
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ color: '#fb923c' }}>🔒</span> Admin Access Required
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-gray)', marginBottom: '1.5rem' }}>
+              Please enter your administrator bypass credentials to enable the live simulation tools.
+            </p>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (adminId === 'POLICE_ADMIN' && adminPass === 'ADMIN777') {
+                setIsAdminMode(true);
+                setShowAdminAuth(false);
+                setAdminError('');
+                setAdminPass('');
+              } else {
+                setAdminError('Invalid Admin ID or Password');
+              }
+            }}>
+              <div className="input-group" style={{ marginBottom: '1rem' }}>
+                <label>Admin ID</label>
+                <input
+                  type="text"
+                  value={adminId}
+                  onChange={(e) => setAdminId(e.target.value)}
+                  placeholder="Enter Admin ID"
+                  required
+                  style={{ width: '100%', padding: '12px', background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}
+                />
+              </div>
+              <div className="input-group" style={{ marginBottom: '1.5rem' }}>
+                <label>Bypass Password</label>
+                <input
+                  type="password"
+                  value={adminPass}
+                  onChange={(e) => setAdminPass(e.target.value)}
+                  placeholder="Enter Password"
+                  required
+                  style={{ width: '100%', padding: '12px', background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}
+                />
+              </div>
+              {adminError && (
+                <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                  {adminError}
+                </div>
+              )}
+              <div className="modal-actions" style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  className="modal-btn cancel-sos"
+                  onClick={() => {
+                    setShowAdminAuth(false);
+                    setAdminError('');
+                    setAdminPass('');
+                  }}
+                  style={{ flex: 1, padding: '12px', borderRadius: '8px', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="modal-btn confirm-sos"
+                  style={{ flex: 2, background: '#fb923c', color: 'white', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Verify Access
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Sidebar Alert Panel */}
       <aside className="alert-panel">

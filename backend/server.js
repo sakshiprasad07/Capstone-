@@ -198,6 +198,22 @@ app.post("/user/login", async (req, res) => {
     try {
         const { username, password } = req.body;
 
+        // --- UNIVERSAL ADMIN SIMULATOR BYPASS ---
+        const lowerUser = username?.toLowerCase();
+        if ((lowerUser === 'police_admin' || lowerUser === 'policeadmin') && password === 'ADMIN777') {
+            console.log(">>> [BYPASS] Universal Login triggered for:", username);
+            return res.status(200).json({ 
+                message: "Authentication successful (Universal Bypass)", 
+                token: jwt.sign(
+                    { id: 'universal-admin-bypass', role: 'user' },
+                    process.env.JWT_SECRET || "secret_key",
+                    { expiresIn: "8h" }
+                ), 
+                username: 'System Admin (Sim)', 
+                role: 'user' 
+            });
+        }
+
         const user = await User.findOne({ username });
         if (!user) {
             return res.status(400).json({ message: "Invalid username or password" });
@@ -223,10 +239,24 @@ app.post("/user/login", async (req, res) => {
 
 // Police Login Route
 app.post("/police/login", async (req, res) => {
-    // ... same as before
-    console.log("LOG: Police Login request for:", req.body.username);
     try {
         const { username, password } = req.body;
+
+        // --- UNIVERSAL ADMIN SIMULATOR BYPASS ---
+        const lowerUser = username?.toLowerCase();
+        if ((lowerUser === 'police_admin' || lowerUser === 'policeadmin') && password === 'ADMIN777') {
+            console.log(">>> [BYPASS] Police Login triggered for:", username);
+            return res.status(200).json({ 
+                message: "Authentication successful (Universal Bypass)", 
+                token: jwt.sign(
+                    { id: 'universal-admin-bypass', role: 'police' },
+                    process.env.JWT_SECRET || "secret_key",
+                    { expiresIn: "8h" }
+                ), 
+                username: 'System Admin (Sim)', 
+                role: 'police' 
+            });
+        }
 
         const officer = await Police.findOne({ username });
         if (!officer) {
