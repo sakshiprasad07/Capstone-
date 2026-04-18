@@ -170,7 +170,8 @@ function AutoCenter({ position, done }) {
 }
 
 // ─── Main CrimeMap component ───────────────────────────────────────────────────
-export default function CrimeMap() {
+// Removed duplicate export - fixed syntax error
+
 export default function CrimeMap({ onDangerZone, sosAlerts = [], showVictimSimulator = false }) {
   const [crimes, setCrimes]               = useState([]);
   const [userPos, setUserPos]             = useState(null);
