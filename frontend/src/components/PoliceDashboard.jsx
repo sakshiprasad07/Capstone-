@@ -8,7 +8,7 @@ function PoliceDashboard() {
   const [activeTab, setActiveTab] = useState('sos');
   const [username, setUsername] = useState('Officer');
   const [errorMessage, setErrorMessage] = useState('');
-  const [dangerInfo, setDangerInfo] = useState(null);
+
 
   const [sosAlerts, setSosAlerts] = useState([]);
   const [reportAlerts, setReportAlerts] = useState([]);
@@ -84,9 +84,7 @@ function PoliceDashboard() {
     navigate('/');
   };
 
-  const handleDangerZone = useCallback((info) => {
-    setDangerInfo(info);
-  }, []);
+
 
   // FIX: handleStatusUpdate now uses functional updater so it's never stale,
   // and correctly uses alert._id (MongoDB) for SOS alerts
@@ -230,7 +228,7 @@ function PoliceDashboard() {
 
         {/* FIX: Police dashboard now shows the real CrimeMap instead of a placeholder */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-          <CrimeMap onDangerZone={handleDangerZone} />
+          <CrimeMap />
         </div>
       </main>
 
