@@ -3,29 +3,6 @@ import { MapContainer, TileLayer, useMap, Marker, Popup, CircleMarker, useMapEve
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// ─── User location marker (CURSOR TRACKING) ──────────────────────────────────
-function UserLocationMarker({ position, onPositionChange }) {
-  if (!position) return null;
-  return (
-    <>
-      <CircleMarker
-        center={position}
-        radius={12}
-        pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.2, weight: 2 }}
-      />
-      <CircleMarker
-        center={position}
-        radius={5}
-        pathOptions={{ color: '#fff', fillColor: '#3b82f6', fillOpacity: 1, weight: 2 }}
-      >
-        <Popup>
-          <div style={{ color: '#1e293b', fontWeight: 600 }}>📍 Your SOS Location (Cursor)</div>
-        </Popup>
-      </CircleMarker>
-    </>
-  );
-}
-
 // ─── SOS markers ──────────────────────────────────────────────────────────────
 function SosMarkers({ sosAlerts }) {
   return (
@@ -97,7 +74,6 @@ function SimulatedSosMarker({ position, onMove }) {
 function PoliceStationsLayer({ enabled, sosAlerts = [] }) {
   const map = useMap();
   const markersRef = useRef([]);
-  const pendingFetch = useRef(null);
 
   // Identify stations with active SOS alerts
   const assignedStationIds = sosAlerts
@@ -122,8 +98,6 @@ function PoliceStationsLayer({ enabled, sosAlerts = [] }) {
   }, [map]);
 
   const fetchStations = useCallback(async () => {
-    if (!enabled) return;
-    clearMarkers();
     const b = map.getBounds();
     try {
       const res = await fetch(`/api/stations?bbox=${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}&limit=50`);
@@ -137,12 +111,19 @@ function PoliceStationsLayer({ enabled, sosAlerts = [] }) {
         markersRef.current.push(m);
       });
     } catch (err) { console.warn('Failed to load stations', err); }
-  }, [enabled, map, clearMarkers, assignedStationIds]);
+  }, [map, assignedStationIds]);
 
+  // Handle enabling/disabling of stations layer
   useEffect(() => {
-    fetchStations();
-  }, [enabled, fetchStations]);
+    if (enabled) {
+      clearMarkers();
+      fetchStations();
+    } else {
+      clearMarkers();
+    }
+  }, [enabled, clearMarkers, fetchStations]);
 
+  // Reload on map move when enabled
   useMapEvents({ moveend: enabled ? fetchStations : undefined });
   return null;
 }
@@ -248,9 +229,8 @@ export default function CrimeMap({ sosAlerts = [], isAdminMode = false, onCursor
           attribution='&copy; CARTO'
         />
 
-        {userPos && <UserLocationMarker position={userPos} onPositionChange={setUserPos} />}
         <SosMarkers sosAlerts={sosAlerts} />
-        <PoliceStationsLayer enabled={showStations} />
+        <PoliceStationsLayer enabled={showStations} sosAlerts={sosAlerts} />
         
         {isAdminMode && (
           <>
