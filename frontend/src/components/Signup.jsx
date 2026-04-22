@@ -74,16 +74,30 @@ function Signup() {
   };
 
   useEffect(() => {
+    let checkInterval;
+    const initGoogleAuth = () => {
+      if (window.google && document.getElementById('googleBtnSignup')) {
+        if (checkInterval) clearInterval(checkInterval);
+        window.google.accounts.id.initialize({
+          client_id: "772786124174-83go9s21icd8m5lrqeu28brgfhaiupa1.apps.googleusercontent.com",
+          callback: handleGoogleResponse
+        });
+        window.google.accounts.id.renderButton(
+          document.getElementById('googleBtnSignup'),
+          { theme: "outline", size: "large", width: "100%", text: "signup_with" }
+        );
+      }
+    };
+
     if (window.google) {
-      window.google.accounts.id.initialize({
-        client_id: "772786124174-83go9s21icd8m5lrqeu28brgfhaiupa1.apps.googleusercontent.com",
-        callback: handleGoogleResponse
-      });
-      window.google.accounts.id.renderButton(
-        document.getElementById('googleBtnSignup'),
-        { theme: "outline", size: "large", width: "100%", text: "signup_with" }
-      );
+      initGoogleAuth();
+    } else {
+      checkInterval = setInterval(initGoogleAuth, 100);
     }
+
+    return () => {
+      if (checkInterval) clearInterval(checkInterval);
+    };
   }, []);
 
   return (

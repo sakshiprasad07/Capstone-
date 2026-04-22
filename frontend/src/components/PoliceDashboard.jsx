@@ -16,6 +16,7 @@ function PoliceDashboard() {
   const [reportAlerts, setReportAlerts] = useState([]);
   const [previousSosCount, setPreviousSosCount] = useState(0);
   const [notificationSos, setNotificationSos] = useState(null);
+  const [rankingsData, setRankingsData] = useState([]);
 
   // Admin Simulator state
   const [isAdminMode, setIsAdminMode] = useState(false);
@@ -78,6 +79,51 @@ function PoliceDashboard() {
     }
   }, []);
 
+  const fetchAreaRankings = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/crimes`);
+      const data = await response.json();
+      if (response.ok && data.crimes) {
+        const cityCounts = {};
+        data.crimes.forEach(c => {
+          const city = c.city || 'Unknown';
+          if (!cityCounts[city]) {
+            cityCounts[city] = { name: city, total: 0, types: {} };
+          }
+          cityCounts[city].total += 1;
+          const type = c.crimeType || 'Other';
+          cityCounts[city].types[type] = (cityCounts[city].types[type] || 0) + 1;
+        });
+
+        let sorted = Object.values(cityCounts).map(area => {
+          let topPattern = 'Unknown';
+          let maxCount = 0;
+          for (const [type, count] of Object.entries(area.types)) {
+            if (count > maxCount) {
+              maxCount = count;
+              topPattern = type;
+            }
+          }
+          // Simplistic threat thresholds
+          let threat = 'Moderate';
+          if (area.total > 50) threat = 'Critical';
+          else if (area.total > 20) threat = 'High';
+
+          return {
+            name: area.name,
+            total: area.total,
+            topPattern,
+            threat
+          };
+        }).sort((a, b) => b.total - a.total);
+
+        setRankingsData(sorted);
+      }
+    } catch (error) {
+      console.error('Fetch rankings error:', error);
+    }
+  }, []);
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
@@ -100,12 +146,13 @@ function PoliceDashboard() {
 
     fetchSosAlerts();
     fetchReportAlerts();
+    fetchAreaRankings();
     const intervalId = setInterval(() => {
       fetchSosAlerts();
       fetchReportAlerts();
     }, 5000);
     return () => clearInterval(intervalId);
-  }, [navigate, fetchSosAlerts, fetchReportAlerts]);
+  }, [navigate, fetchSosAlerts, fetchReportAlerts, fetchAreaRankings]);
 
   const handleLogout = (e) => {
     e.preventDefault();
@@ -260,6 +307,42 @@ function PoliceDashboard() {
     });
   };
 
+  const renderRankings = () => {
+    if (rankingsData.length === 0) {
+      return <div style={{ textAlign: 'center', color: 'var(--text-gray)', padding: '2rem' }}>Loading area data...</div>;
+    }
+    return (
+      <div className="rankings-container">
+        <table className="rankings-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Area</th>
+              <th>Incidents</th>
+              <th>Top Pattern</th>
+              <th>Threat</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rankingsData.map((area, index) => (
+              <tr key={index}>
+                <td style={{ fontWeight: 800, color: 'var(--text-gray)' }}>#{index + 1}</td>
+                <td style={{ fontWeight: 600, color: '#e2e8f0' }}>{area.name}</td>
+                <td>{area.total}</td>
+                <td style={{ fontSize: '0.85rem', color: '#94a3b8' }}>{area.topPattern}</td>
+                <td>
+                  <span className={`threat-badge threat-${area.threat.toLowerCase()}`}>
+                    {area.threat}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   return (
     <div className="police-dashboard" style={{ background: 'var(--bg-dark)' }}>
       {/* SOS Notification Popup */}
@@ -309,7 +392,7 @@ function PoliceDashboard() {
 
         {/* Main Crime Map with Admin & SOS props */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-          <CrimeMap sosAlerts={sosAlerts} isAdminMode={isAdminMode} />
+          <CrimeMap sosAlerts={sosAlerts} isAdminMode={isAdminMode} showHeatmap={true} />
         </div>
       </main>
 
@@ -433,10 +516,18 @@ function PoliceDashboard() {
               </span>
             )}
           </button>
+          <button
+            className={`tab-btn ${activeTab === 'rankings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('rankings')}
+          >
+            Area Rankings
+          </button>
         </div>
 
         <div className="alert-feed">
-          {activeTab === 'sos' ? renderAlerts(sosAlerts) : renderAlerts(reportAlerts)}
+          {activeTab === 'sos' && renderAlerts(sosAlerts)}
+          {activeTab === 'reports' && renderAlerts(reportAlerts)}
+          {activeTab === 'rankings' && renderRankings()}
         </div>
       </aside>
     </div>

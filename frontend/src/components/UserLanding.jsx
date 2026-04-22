@@ -21,6 +21,7 @@ function UserLanding() {
   const [adminPass, setAdminPass] = useState('');
   const [adminError, setAdminError] = useState('');
   const [cursorLocation, setCursorLocation] = useState(null); // Track cursor position from map
+  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -72,11 +73,11 @@ function UserLanding() {
 
   const handleConfirmSos = () => {
     setShowSosModal(false);
-    // Use cursor location from map instead of geolocation
+    // Prioritize automatic or cursor-selected location from the interactive map
     if (cursorLocation) {
       sendSos(cursorLocation[0], cursorLocation[1]);
     } else {
-      setFeedback('Location marker not available. Please move your cursor over the map.');
+      setFeedback('GPS location not detected yet. Please ensure location access is enabled or click on the map.');
     }
   };
 
@@ -108,6 +109,7 @@ function UserLanding() {
         setReportLocation('');
         setReportTime('');
         setReportDetails('');
+        setUseCurrentLocation(false);
         setTimeout(() => setFeedback(''), 5000);
       } else {
         setFeedback(data.message || 'Unable to send crime report.');
@@ -240,7 +242,29 @@ function UserLanding() {
                 onChange={(e) => setReportLocation(e.target.value)}
                 placeholder="Street, landmark, or neighborhood"
                 required
+                disabled={useCurrentLocation}
+                style={{ opacity: useCurrentLocation ? 0.7 : 1 }}
               />
+              <div style={{ display: 'flex', alignItems: 'center', marginTop: '10px', gap: '8px' }}>
+                <input
+                  type="checkbox"
+                  id="useCurrentLocation"
+                  checked={useCurrentLocation}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setUseCurrentLocation(checked);
+                    if (checked && cursorLocation) {
+                      setReportLocation(`${cursorLocation[0].toFixed(5)}, ${cursorLocation[1].toFixed(5)}`);
+                    } else if (!checked) {
+                      setReportLocation('');
+                    }
+                  }}
+                  style={{ width: 'auto', margin: 0 }}
+                />
+                <label htmlFor="useCurrentLocation" style={{ fontSize: '0.85rem', cursor: 'pointer', margin: 0, color: 'var(--text-gray)' }}>
+                  Use my current GPS location
+                </label>
+              </div>
             </div>
             <div className="input-group">
               <label htmlFor="crimeTime">When did you see it?</label>
