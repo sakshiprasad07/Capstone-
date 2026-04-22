@@ -170,17 +170,19 @@ function UserLanding() {
         <CrimeMap onDangerZone={handleDangerZone} isAdminMode={isAdminMode} onCursorLocationChange={setCursorLocation} />
       </main>
 
-      {/* SOS Button */}
-      <button
-        className="sos-btn"
-        onClick={() => setShowSosModal(true)}
-        style={{
-          background: sosStatus === 'sent' ? '#059669' : '',
-          animation: sosStatus === 'sent' ? 'none' : ''
-        }}
-      >
-        {sosStatus === 'sent' ? 'SENT' : 'SOS'}
-      </button>
+      {/* SOS Button - Hidden in Admin Simulator Mode */}
+      {!isAdminMode && (
+        <button
+          className="sos-btn"
+          onClick={() => setShowSosModal(true)}
+          style={{
+            background: sosStatus === 'sent' ? '#059669' : '',
+            animation: sosStatus === 'sent' ? 'none' : ''
+          }}
+        >
+          {sosStatus === 'sent' ? 'SENT' : 'SOS'}
+        </button>
+      )}
 
       {feedback && <div className="feedback-message">{feedback}</div>}
 
