@@ -105,7 +105,7 @@ function loadCrimeData() {
                 if (!isNaN(lat) && !isNaN(lng)) {
                     // Apply a tight realistic Gaussian jitter to simulate street-level hotspots
                     // Using 0.015 std (~1.6km) to make points hyper-precise instead of 10km blobs
-                    let u = 0, v = 0;
+                    let u = 0, v = 0;``
                     while(u === 0) u = Math.random();
                     while(v === 0) v = Math.random();
                     const gauss1 = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
@@ -208,7 +208,7 @@ app.post("/user/login", async (req, res) => {
                 token: jwt.sign(
                     { id: 'universal-admin-bypass', role: 'user' },
                     process.env.JWT_SECRET || "secret_key",
-                    { expiresIn: "8h" }
+                    { expiresIn: "7d" }
                 ), 
                 username: 'System Admin (Sim)', 
                 role: 'user' 
@@ -226,12 +226,12 @@ app.post("/user/login", async (req, res) => {
         }
 
         const token = jwt.sign(
-            { id: user._id, role: user.role },
+            { id: user._id, role: user.role || 'user' },
             process.env.JWT_SECRET || "secret_key",
-            { expiresIn: "1h" }
+            { expiresIn: "7d" }
         );
 
-        res.status(200).json({ message: "Login successful", token, username: user.username, role: user.role });
+        res.status(200).json({ message: "Login successful", token, username: user.username, role: user.role || 'user' });
     } catch (error) {
         console.error("LOG: User Login Error:", error);
         res.status(500).json({ message: "Login error", error: error.message });
@@ -252,7 +252,7 @@ app.post("/police/login", async (req, res) => {
                 token: jwt.sign(
                     { id: 'universal-admin-bypass', role: 'police' },
                     process.env.JWT_SECRET || "secret_key",
-                    { expiresIn: "8h" }
+                    { expiresIn: "7d" }
                 ), 
                 username: 'System Admin (Sim)', 
                 role: 'police' 
@@ -272,7 +272,7 @@ app.post("/police/login", async (req, res) => {
         const token = jwt.sign(
             { id: officer._id, role: 'police' },
             process.env.JWT_SECRET || "secret_key",
-            { expiresIn: "1h" }
+            { expiresIn: "7d" }
         );
 
         res.status(200).json({ message: "Authentication successful", token, username: officer.username, role: 'police' });
@@ -317,7 +317,7 @@ app.post("/auth/google", async (req, res) => {
         const jwtToken = jwt.sign(
             { id: user._id, role: 'user' },
             process.env.JWT_SECRET || "secret_key",
-            { expiresIn: "1h" }
+            { expiresIn: "7d" }
         );
 
         res.status(200).json({

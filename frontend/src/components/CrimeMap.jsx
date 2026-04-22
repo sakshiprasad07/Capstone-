@@ -2,6 +2,30 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { MapContainer, TileLayer, useMap, Marker, Popup, CircleMarker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.heat';
+
+// ─── User location marker (CURSOR TRACKING) ──────────────────────────────────
+function UserLocationMarker({ position, onPositionChange }) {
+  if (!position) return null;
+  return (
+    <>
+      <CircleMarker
+        center={position}
+        radius={12}
+        pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.2, weight: 2 }}
+      />
+      <CircleMarker
+        center={position}
+        radius={5}
+        pathOptions={{ color: '#fff', fillColor: '#3b82f6', fillOpacity: 1, weight: 2 }}
+      >
+        <Popup>
+          <div style={{ color: '#1e293b', fontWeight: 600 }}>📍 Your GPS Location</div>
+        </Popup>
+      </CircleMarker>
+    </>
+  );
+}
 
 // ─── SOS markers ──────────────────────────────────────────────────────────────
 function SosMarkers({ sosAlerts }) {
@@ -74,6 +98,7 @@ function SimulatedSosMarker({ position, onMove }) {
 function PoliceStationsLayer({ enabled, sosAlerts = [] }) {
   const map = useMap();
   const markersRef = useRef([]);
+  const pendingFetch = useRef(null);
 
   // Identify stations with active SOS alerts
   const assignedStationIds = sosAlerts
@@ -98,6 +123,8 @@ function PoliceStationsLayer({ enabled, sosAlerts = [] }) {
   }, [map]);
 
   const fetchStations = useCallback(async () => {
+    if (!enabled) return;
+    clearMarkers();
     const b = map.getBounds();
     try {
       const res = await fetch(`/api/stations?bbox=${b.getSouth()},${b.getWest()},${b.getNorth()},${b.getEast()}&limit=50`);
@@ -111,33 +138,88 @@ function PoliceStationsLayer({ enabled, sosAlerts = [] }) {
         markersRef.current.push(m);
       });
     } catch (err) { console.warn('Failed to load stations', err); }
-  }, [map, assignedStationIds]);
+  }, [enabled, map, clearMarkers, assignedStationIds]);
 
-  // Handle enabling/disabling of stations layer
   useEffect(() => {
-    if (enabled) {
-      clearMarkers();
-      fetchStations();
-    } else {
-      clearMarkers();
-    }
-  }, [enabled, clearMarkers, fetchStations]);
+    fetchStations();
+  }, [enabled, fetchStations]);
 
-  // Reload on map move when enabled
   useMapEvents({ moveend: enabled ? fetchStations : undefined });
   return null;
 }
 
+// ─── Heatmap Layer ───────────────────────────────────────────────────────────
+function HeatmapLayer({ enabled }) {
+  const map = useMap();
+  const heatLayerRef = useRef(null);
+
+  useEffect(() => {
+    if (!enabled) {
+      if (heatLayerRef.current) {
+        map.removeLayer(heatLayerRef.current);
+        heatLayerRef.current = null;
+      }
+      return;
+    }
+
+    const fetchCrimeData = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/crimes');
+        const data = await response.json();
+        const crimes = data.crimes || [];
+
+        const points = crimes.map(c => [c.latitude, c.longitude, 0.5]); // lat, lng, intensity
+
+        if (heatLayerRef.current) {
+          map.removeLayer(heatLayerRef.current);
+        }
+
+        heatLayerRef.current = L.heatLayer(points, {
+          radius: 25,
+          blur: 15,
+          maxZoom: 17,
+          gradient: {
+            0.4: 'rgba(56, 189, 248, 0.5)', // Blue
+            0.6: 'rgba(16, 185, 129, 0.7)', // Green
+            0.7: 'rgba(234, 179, 8, 0.8)',  // Yellow
+            0.8: 'rgba(249, 115, 22, 0.9)', // Orange
+            1.0: 'rgba(239, 68, 68, 1)'     // Red
+          }
+        }).addTo(map);
+      } catch (error) {
+        console.error('Failed to fetch crime data for heatmap:', error);
+      }
+    };
+
+    fetchCrimeData();
+
+    return () => {
+      if (heatLayerRef.current) {
+        map.removeLayer(heatLayerRef.current);
+        heatLayerRef.current = null;
+      }
+    };
+  }, [enabled, map]);
+
+  return null;
+}
+
 // ─── Main CrimeMap (SIMULATOR ENABLED) ──────────────────────────────────────────
-export default function CrimeMap({ sosAlerts = [], isAdminMode = false, onCursorLocationChange = null }) {
+export default function CrimeMap({ sosAlerts = [], isAdminMode = false, onCursorLocationChange = null, showHeatmap = false }) {
   const INDIA_CENTER = [22.9074, 79.1469];
   
   const [showStations, setShowStations] = useState(true);
+  const [internalShowHeatmap, setInternalShowHeatmap] = useState(showHeatmap);
   const [userPos, setUserPos] = useState(null);
   const [victimPos, setVictimPos] = useState(INDIA_CENTER);
   const [sosLoading, setSosLoading] = useState(false);
   const [sosSuccess, setSosSuccess] = useState(false);
   const mapRef = useRef(null);
+
+  // Sync internal state with prop
+  useEffect(() => {
+    setInternalShowHeatmap(showHeatmap);
+  }, [showHeatmap]);
 
   // Recenter map on Admin toggle
   useEffect(() => {
@@ -146,42 +228,55 @@ export default function CrimeMap({ sosAlerts = [], isAdminMode = false, onCursor
     }
   }, [isAdminMode]);
 
-  // Track cursor position on map
-  useEffect(() => {
-    if (!mapRef.current) return;
-    
-    const mapElement = mapRef.current._container;
-    if (!mapElement) return;
-
-    const handleMouseMove = (e) => {
-      const rect = mapElement.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      // Convert pixel coordinates to lat/lng
-      const point = L.point(x, y);
-      const latLng = mapRef.current.containerPointToLatLng(point);
-      
-      const newPos = [latLng.lat, latLng.lng];
-      setUserPos(newPos);
-      
-      // Notify parent component of cursor location change
-      if (onCursorLocationChange) {
-        onCursorLocationChange(newPos);
+// ─── Map interaction handler (Admin Only) ───────────────────────────────────
+function MapClickHandler({ isAdminMode, onLocationSelect }) {
+  useMapEvents({
+    click: (e) => {
+      if (isAdminMode) {
+        onLocationSelect([e.latlng.lat, e.latlng.lng]);
       }
-    };
-
-    mapElement.addEventListener('mousemove', handleMouseMove);
-    return () => mapElement.removeEventListener('mousemove', handleMouseMove);
-  }, [onCursorLocationChange]);
-
-  // Remove old geolocation watch code and replace with initial center
-  useEffect(() => {
-    if (!userPos && victimPos === INDIA_CENTER) {
-      // Initialize with India center or user's first cursor position
-      setUserPos(INDIA_CENTER);
     }
-  }, []);
+  });
+  return null;
+}
+
+  // Restore automatic user geolocation
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const newPos = [latitude, longitude];
+          
+          setUserPos(newPos);
+          if (onCursorLocationChange) {
+            onCursorLocationChange(newPos);
+          }
+
+          // Center map on user location
+          if (mapRef.current) {
+            mapRef.current.setView(newPos, 13);
+          }
+          console.log("Automatic geolocation sync successful:", newPos);
+        },
+        (error) => {
+          console.warn("Geolocation access denied or failed. Falling back to default center.", error.message);
+          // Only use India center if we don't have userPos yet
+          if (!userPos) {
+            setUserPos(INDIA_CENTER);
+            if (onCursorLocationChange) onCursorLocationChange(INDIA_CENTER);
+          }
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
+    } else {
+      console.warn("Geolocation not supported by this browser.");
+      if (!userPos) {
+        setUserPos(INDIA_CENTER);
+        if (onCursorLocationChange) onCursorLocationChange(INDIA_CENTER);
+      }
+    }
+  }, []); // Run once on mount
 
   const triggerSimulatedSos = async () => {
     if (!victimPos) return;
@@ -229,8 +324,11 @@ export default function CrimeMap({ sosAlerts = [], isAdminMode = false, onCursor
           attribution='&copy; CARTO'
         />
 
+        {userPos && <UserLocationMarker position={userPos} onPositionChange={setUserPos} />}
         <SosMarkers sosAlerts={sosAlerts} />
-        <PoliceStationsLayer enabled={showStations} sosAlerts={sosAlerts} />
+        <PoliceStationsLayer enabled={showStations} />
+        <HeatmapLayer enabled={internalShowHeatmap} />
+        <MapClickHandler isAdminMode={isAdminMode} onLocationSelect={setVictimPos} />
         
         {isAdminMode && (
           <>
@@ -275,12 +373,19 @@ export default function CrimeMap({ sosAlerts = [], isAdminMode = false, onCursor
       <div style={{
         position: 'absolute', top: 20, left: 20, zIndex: 1000,
         background: 'rgba(15, 23, 42, 0.8)', padding: '12px 16px', borderRadius: '12px',
-        border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '13px'
+        border: '1px solid rgba(255,255,255,0.1)', color: 'white', fontSize: '13px',
+        display: 'flex', flexDirection: 'column', gap: '8px'
       }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
           <input type="checkbox" checked={showStations} onChange={e => setShowStations(e.target.checked)} />
           Police Stations
         </label>
+        {showHeatmap && (
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <input type="checkbox" checked={internalShowHeatmap} onChange={e => setInternalShowHeatmap(e.target.checked)} />
+            Crime Heatmap
+          </label>
+        )}
       </div>
     </div>
   );
