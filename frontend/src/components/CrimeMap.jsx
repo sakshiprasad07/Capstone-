@@ -279,7 +279,11 @@ function MapClickHandler({ isAdminMode, onLocationSelect }) {
   }, []); // Run once on mount
 
   const triggerSimulatedSos = async () => {
-    if (!victimPos) return;
+    if (!victimPos || victimPos.length !== 2 || isNaN(victimPos[0]) || isNaN(victimPos[1])) {
+      alert('Invalid victim position. Please set a valid location first.');
+      return;
+    }
+
     setSosLoading(true);
     setSosSuccess(false);
 
@@ -299,14 +303,14 @@ function MapClickHandler({ isAdminMode, onLocationSelect }) {
         setSosSuccess(true);
         setTimeout(() => setSosSuccess(false), 4000);
       } else {
-        alert('Failed to trigger simulation');
+        const errorData = await response.json().catch(() => ({}));
+        alert(`Failed to trigger simulation: ${errorData.message || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error(error);
-      alert('Network error');
+      console.error('SOS simulation error:', error);
+      alert(`Network error: ${error.message || 'Unable to connect to server'}`);
     } finally {
-      setSosLoading(true); // Artificial delay to feel "premium"
-      setTimeout(() => setSosLoading(false), 800);
+      setSosLoading(false);
     }
   };
 

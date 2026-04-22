@@ -16,6 +16,18 @@ function Signup() {
 
   const handleSignup = async (e) => {
     e.preventDefault();
+
+    // Input validation
+    if (!username || username.trim().length < 3) {
+      showMessage('Username must be at least 3 characters long', 'error');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      showMessage('Password must be at least 6 characters long', 'error');
+      return;
+    }
+
     if (password !== confirmPassword) {
       showMessage('Passwords do not match', 'error');
       return;
@@ -25,7 +37,7 @@ function Signup() {
       const response = await fetch(`${API_URL}/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username: username.trim(), password })
       });
 
       const data = await response.json();

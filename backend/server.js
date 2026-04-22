@@ -105,7 +105,7 @@ function loadCrimeData() {
                 if (!isNaN(lat) && !isNaN(lng)) {
                     // Apply a tight realistic Gaussian jitter to simulate street-level hotspots
                     // Using 0.015 std (~1.6km) to make points hyper-precise instead of 10km blobs
-                    let u = 0, v = 0;``
+                    let u = 0, v = 0;
                     while(u === 0) u = Math.random();
                     while(v === 0) v = Math.random();
                     const gauss1 = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
@@ -350,34 +350,8 @@ app.post('/sos', async (req, res) => {
         // Find nearest police station if coordinates are provided
         let assignedStation = null;
         if (latitude != null && longitude != null) {
-            // Use the stations API to find nearby stations (same as frontend)
-            // This ensures we use the most up-to-date station list
-            try {
-                const stationsResponse = await fetch(
-                    `http://localhost:5000/api/stations?lat=${latitude}&lng=${longitude}&radius=50000&limit=1`,
-                    { timeout: 5000 }
-                );
-                
-                if (stationsResponse.ok) {
-                    const stationsData = await stationsResponse.json();
-                    const stations = Array.isArray(stationsData.stations) ? stationsData.stations : [];
-                    
-                    if (stations.length > 0) {
-                        const nearest = stations[0];
-                        assignedStation = {
-                            stationId: nearest.osm_id ? nearest.osm_id.toString() : nearest.id?.toString(),
-                            name: nearest.name || 'Unknown Station',
-                            lat: nearest.lat,
-                            lon: nearest.lon,
-                            distance: nearest.distance_m ? (nearest.distance_m / 1000).toFixed(2) : 'N/A'
-                        };
-                    }
-                }
-            } catch (apiErr) {
-                // Fallback to hardcoded function if API fails
-                console.warn('Stations API failed, falling back to hardcoded list:', apiErr.message);
-                assignedStation = findNearestPoliceStation(latitude, longitude);
-            }
+            // Use the hardcoded function directly to avoid internal fetch calls
+            assignedStation = findNearestPoliceStation(latitude, longitude);
         }
 
         const sos = new Sos({

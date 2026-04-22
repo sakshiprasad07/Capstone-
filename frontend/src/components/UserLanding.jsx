@@ -74,7 +74,7 @@ function UserLanding() {
   const handleConfirmSos = () => {
     setShowSosModal(false);
     // Prioritize automatic or cursor-selected location from the interactive map
-    if (cursorLocation) {
+    if (cursorLocation && cursorLocation.length === 2 && !isNaN(cursorLocation[0]) && !isNaN(cursorLocation[1])) {
       sendSos(cursorLocation[0], cursorLocation[1]);
     } else {
       setFeedback('GPS location not detected yet. Please ensure location access is enabled or click on the map.');
@@ -122,6 +122,33 @@ function UserLanding() {
 
   const handleSubmitReport = (e) => {
     e.preventDefault();
+
+    // Input validation
+    if (!reportType || reportType === 'Theft') {
+      setFeedback('Please select a crime type.');
+      return;
+    }
+
+    if (!reportLocation || reportLocation.trim().length < 3) {
+      setFeedback('Please provide a detailed location (at least 3 characters).');
+      return;
+    }
+
+    if (!reportTime || reportTime.trim().length < 3) {
+      setFeedback('Please provide incident time details.');
+      return;
+    }
+
+    if (!reportDetails || reportDetails.trim().length < 10) {
+      setFeedback('Please provide more details about the incident (at least 10 characters).');
+      return;
+    }
+
+    if (useCurrentLocation && (!cursorLocation || cursorLocation.length !== 2)) {
+      setFeedback('Location coordinates not available. Please try again.');
+      return;
+    }
+
     sendReport();
   };
 
