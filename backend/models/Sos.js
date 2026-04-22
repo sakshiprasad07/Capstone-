@@ -51,6 +51,22 @@ const sosSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'acknowledged', 'resolved'],
     default: 'pending'
+  },
+  assignedPoliceStationId: {
+    type: String,
+    default: null
+  },
+  assignedPoliceStationName: {
+    type: String,
+    default: null
+  },
+  assignmentDistance: {
+    type: Number,
+    default: null
+  },
+  assignedAt: {
+    type: Date,
+    default: null
   }
 }, { timestamps: true });
 

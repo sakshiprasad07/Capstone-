@@ -3,8 +3,8 @@ import { MapContainer, TileLayer, useMap, Marker, Popup, CircleMarker, useMapEve
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// ─── User location marker ──────────────────────────────────────────────────────
-function UserLocationMarker({ position }) {
+// ─── User location marker (CURSOR TRACKING) ──────────────────────────────────
+function UserLocationMarker({ position, onPositionChange }) {
   if (!position) return null;
   return (
     <>
@@ -19,7 +19,7 @@ function UserLocationMarker({ position }) {
         pathOptions={{ color: '#fff', fillColor: '#3b82f6', fillOpacity: 1, weight: 2 }}
       >
         <Popup>
-          <div style={{ color: '#1e293b', fontWeight: 600 }}>📍 Your Current Location</div>
+          <div style={{ color: '#1e293b', fontWeight: 600 }}>📍 Your SOS Location (Cursor)</div>
         </Popup>
       </CircleMarker>
     </>
@@ -94,17 +94,27 @@ function SimulatedSosMarker({ position, onMove }) {
 
 
 // ─── Police stations layer ──────────────────────────────────────────────────
-function PoliceStationsLayer({ enabled }) {
+function PoliceStationsLayer({ enabled, sosAlerts = [] }) {
   const map = useMap();
   const markersRef = useRef([]);
   const pendingFetch = useRef(null);
 
-  const policeIcon = L.divIcon({
-    className: 'police-pin',
-    html: `<div style="width:12px;height:12px;background:#38bdf8;border:3px solid white;border-radius:50%;box-shadow:0 0 12px rgba(56,189,248,0.5);"></div>`,
-    iconSize: [12, 12],
-    iconAnchor: [6, 6]
-  });
+  // Identify stations with active SOS alerts
+  const assignedStationIds = sosAlerts
+    .filter(alert => alert.type === 'sos' && alert.status !== 'resolved' && alert.assignedPoliceStationId)
+    .map(alert => alert.assignedPoliceStationId);
+
+  const getPoliceIcon = (stationId) => {
+    const isAssigned = assignedStationIds.includes(stationId);
+    const blinkStyle = isAssigned ? 'animation: blink 1s infinite;' : '';
+    
+    return L.divIcon({
+      className: 'police-pin',
+      html: `<div style="width:12px;height:12px;background:${isAssigned ? '#ef4444' : '#38bdf8'};border:3px solid white;border-radius:50%;box-shadow:0 0 12px rgba(${isAssigned ? '239,68,68' : '56,189,248'},0.5);${blinkStyle}"></div>`,
+      iconSize: [12, 12],
+      iconAnchor: [6, 6]
+    });
+  };
 
   const clearMarkers = useCallback(() => {
     markersRef.current.forEach(m => map.removeLayer(m));
@@ -120,12 +130,14 @@ function PoliceStationsLayer({ enabled }) {
       const data = await res.json();
       const stations = Array.isArray(data.stations) ? data.stations : [];
       stations.forEach(s => {
-        const m = L.marker([s.lat, s.lon], { icon: policeIcon }).bindPopup(`👮 ${s.name || 'Station'}`);
+        const stationId = s.osm_id ? s.osm_id.toString() : s.id?.toString();
+        const icon = getPoliceIcon(stationId);
+        const m = L.marker([s.lat, s.lon], { icon }).bindPopup(`👮 ${s.name || 'Station'}`);
         m.addTo(map);
         markersRef.current.push(m);
       });
     } catch (err) { console.warn('Failed to load stations', err); }
-  }, [enabled, map, clearMarkers]);
+  }, [enabled, map, clearMarkers, assignedStationIds]);
 
   useEffect(() => {
     fetchStations();
@@ -136,7 +148,7 @@ function PoliceStationsLayer({ enabled }) {
 }
 
 // ─── Main CrimeMap (SIMULATOR ENABLED) ──────────────────────────────────────────
-export default function CrimeMap({ sosAlerts = [], isAdminMode = false }) {
+export default function CrimeMap({ sosAlerts = [], isAdminMode = false, onCursorLocationChange = null }) {
   const INDIA_CENTER = [22.9074, 79.1469];
   
   const [showStations, setShowStations] = useState(true);
@@ -153,20 +165,41 @@ export default function CrimeMap({ sosAlerts = [], isAdminMode = false }) {
     }
   }, [isAdminMode]);
 
-  // Sync user location
+  // Track cursor position on map
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    const watchId = navigator.geolocation.watchPosition(
-      pos => {
-        const current = [pos.coords.latitude, pos.coords.longitude];
-        setUserPos(current);
-        // If we still have the default center, update it to real location once
-        if (victimPos === INDIA_CENTER) setVictimPos(current);
-      },
-      err => console.warn(err),
-      { enableHighAccuracy: true }
-    );
-    return () => navigator.geolocation.clearWatch(watchId);
+    if (!mapRef.current) return;
+    
+    const mapElement = mapRef.current._container;
+    if (!mapElement) return;
+
+    const handleMouseMove = (e) => {
+      const rect = mapElement.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // Convert pixel coordinates to lat/lng
+      const point = L.point(x, y);
+      const latLng = mapRef.current.containerPointToLatLng(point);
+      
+      const newPos = [latLng.lat, latLng.lng];
+      setUserPos(newPos);
+      
+      // Notify parent component of cursor location change
+      if (onCursorLocationChange) {
+        onCursorLocationChange(newPos);
+      }
+    };
+
+    mapElement.addEventListener('mousemove', handleMouseMove);
+    return () => mapElement.removeEventListener('mousemove', handleMouseMove);
+  }, [onCursorLocationChange]);
+
+  // Remove old geolocation watch code and replace with initial center
+  useEffect(() => {
+    if (!userPos && victimPos === INDIA_CENTER) {
+      // Initialize with India center or user's first cursor position
+      setUserPos(INDIA_CENTER);
+    }
   }, []);
 
   const triggerSimulatedSos = async () => {
@@ -215,7 +248,7 @@ export default function CrimeMap({ sosAlerts = [], isAdminMode = false }) {
           attribution='&copy; CARTO'
         />
 
-        {userPos && <UserLocationMarker position={userPos} />}
+        {userPos && <UserLocationMarker position={userPos} onPositionChange={setUserPos} />}
         <SosMarkers sosAlerts={sosAlerts} />
         <PoliceStationsLayer enabled={showStations} />
         

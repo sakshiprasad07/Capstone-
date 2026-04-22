@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CrimeMap from './CrimeMap';
+import SosNotificationPopup from './SosNotificationPopup';
 
 const API_URL = 'http://localhost:5000';
 
@@ -8,10 +9,13 @@ function PoliceDashboard() {
   const [activeTab, setActiveTab] = useState('sos');
   const [username, setUsername] = useState('Officer');
   const [errorMessage, setErrorMessage] = useState('');
-
+  const [policeStationId, setPoliceStationId] = useState(null);
+  const [policeStationName, setPoliceStationName] = useState(null);
 
   const [sosAlerts, setSosAlerts] = useState([]);
   const [reportAlerts, setReportAlerts] = useState([]);
+  const [previousSosCount, setPreviousSosCount] = useState(0);
+  const [notificationSos, setNotificationSos] = useState(null);
 
   // Admin Simulator state
   const [isAdminMode, setIsAdminMode] = useState(false);
@@ -31,7 +35,21 @@ function PoliceDashboard() {
       });
       const data = await response.json();
       if (response.ok) {
-        setSosAlerts(data.sos || []);
+        const newAlerts = data.sos || [];
+        
+        // Check for new SOS alerts assigned to this police station
+        if (previousSosCount < newAlerts.length && policeStationId) {
+          const newSos = newAlerts.find(sos => 
+            sos.status === 'pending' && 
+            sos.assignedPoliceStationId === policeStationId
+          );
+          if (newSos) {
+            setNotificationSos(newSos);
+          }
+        }
+        
+        setSosAlerts(newAlerts);
+        setPreviousSosCount(newAlerts.length);
       } else {
         setErrorMessage(data.message || 'Unable to load SOS alerts');
       }
@@ -39,7 +57,7 @@ function PoliceDashboard() {
       console.error('Fetch SOS error:', error);
       setErrorMessage('Connection error while loading SOS alerts');
     }
-  }, []);
+  }, [previousSosCount, policeStationId]);
 
   const fetchReportAlerts = useCallback(async () => {
     const token = localStorage.getItem('token');
@@ -72,6 +90,12 @@ function PoliceDashboard() {
 
     if (storedUsername) {
       setUsername(storedUsername);
+      // Extract or assign a default police station ID based on username
+      // In a real system, this would come from the user's profile
+      // For now, we'll use a hash of the username to create a consistent station ID
+      const stationId = `station_${storedUsername.substring(0, 3).toUpperCase()}`;
+      setPoliceStationId(stationId);
+      setPoliceStationName(`${storedUsername}'s Station`);
     }
 
     fetchSosAlerts();
@@ -146,15 +170,22 @@ function PoliceDashboard() {
 
     return alerts.map((alert) => {
       const alertId = alert._id || alert.id;
+      const isAssignedToMe = alert.type === 'sos' && alert.assignedPoliceStationId === policeStationId;
+      
       return (
         <div
           key={alertId}
           className="alert-card"
-          style={{ opacity: alert.status === 'resolved' ? 0.6 : 1 }}
+          style={{ 
+            opacity: alert.status === 'resolved' ? 0.6 : 1,
+            background: isAssignedToMe ? 'rgba(16, 185, 129, 0.1)' : undefined,
+            borderLeft: isAssignedToMe ? '4px solid #10b981' : undefined
+          }}
         >
           <div className="alert-header">
             <span className={`alert-type ${alert.type === 'sos' ? 'type-sos' : 'type-report'}`}>
               {alert.type === 'sos' ? 'Emergency SOS' : 'Crime Report'}
+              {isAssignedToMe && <span style={{ marginLeft: '8px', color: '#10b981', fontWeight: 'bold' }}>⭐ ASSIGNED</span>}
             </span>
             <span className={`status-badge status-${alert.status}`}>
               {alert.status.toUpperCase()}
@@ -171,12 +202,28 @@ function PoliceDashboard() {
               </div>
             )}
             {alert.type === 'sos' && (
-              <div className="alert-location">
-                <strong>Location:</strong>{' '}
-                {alert.latitude != null && alert.longitude != null
-                  ? `${Number(alert.latitude).toFixed(5)}, ${Number(alert.longitude).toFixed(5)}`
-                  : 'Unavailable'}
-              </div>
+              <>
+                <div className="alert-location">
+                  <strong>Location:</strong>{' '}
+                  {alert.latitude != null && alert.longitude != null
+                    ? `${Number(alert.latitude).toFixed(5)}, ${Number(alert.longitude).toFixed(5)}`
+                    : 'Unavailable'}
+                </div>
+                {alert.assignedPoliceStationName && (
+                  <div style={{ 
+                    marginTop: '8px', 
+                    padding: '8px 12px', 
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    borderRadius: '6px',
+                    fontSize: '0.85rem',
+                    color: '#3b82f6',
+                    fontWeight: 'bold'
+                  }}>
+                    🚔 Assigned to: {alert.assignedPoliceStationName}
+                    {alert.assignmentDistance && ` (${alert.assignmentDistance.toFixed(2)} km)`}
+                  </div>
+                )}
+              </>
             )}
             {alert.createdAt && (
               <div style={{ fontSize: '0.78rem', color: 'var(--text-gray)', marginTop: 4 }}>
@@ -215,6 +262,16 @@ function PoliceDashboard() {
 
   return (
     <div className="police-dashboard" style={{ background: 'var(--bg-dark)' }}>
+      {/* SOS Notification Popup */}
+      {notificationSos && (
+        <SosNotificationPopup 
+          sos={notificationSos} 
+          stationName={policeStationName}
+          duration={10000}
+          onDismiss={() => setNotificationSos(null)}
+        />
+      )}
+      
       {/* Main Map View */}
       <main className="map-view">
         <div className="dashboard-nav" style={{ position: 'absolute', top: 0, left: 0, right: 0, width: '100%', height: 'auto', zIndex: 500 }}>

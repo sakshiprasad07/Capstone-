@@ -11,6 +11,7 @@ const Police = require('./models/Police');
 const Sos = require('./models/Sos');
 const CrimeReport = require('./models/CrimeReport');
 const stationsRouter = require('./routes/stations');
+const { findNearestPoliceStation } = require('./utils/distanceCalculator');
 const { OAuth2Client } = require('google-auth-library');
 require('dotenv').config();
 
@@ -346,16 +347,34 @@ app.post('/sos', async (req, res) => {
         const { username, message, latitude, longitude } = req.body;
         const sosUsername = username || req.body.user || 'Anonymous';
 
+        // Find nearest police station if coordinates are provided
+        let assignedStation = null;
+        if (latitude != null && longitude != null) {
+            assignedStation = findNearestPoliceStation(latitude, longitude);
+        }
+
         const sos = new Sos({
             type: 'sos',
             username: sosUsername,
             message: message || 'Emergency SOS request submitted by user.',
             latitude: latitude || null,
-            longitude: longitude || null
+            longitude: longitude || null,
+            assignedPoliceStationId: assignedStation ? assignedStation.stationId : null,
+            assignedPoliceStationName: assignedStation ? assignedStation.name : null,
+            assignmentDistance: assignedStation ? assignedStation.distance : null,
+            assignedAt: assignedStation ? new Date() : null
         });
 
         await sos.save();
-        res.status(201).json({ message: 'SOS sent successfully', sos });
+        res.status(201).json({ 
+            message: 'SOS sent successfully', 
+            sos,
+            assignedStation: assignedStation ? {
+                id: assignedStation.stationId,
+                name: assignedStation.name,
+                distance: assignedStation.distance
+            } : null
+        });
     } catch (error) {
         console.error('LOG: SOS Save Error:', error);
         res.status(500).json({ message: 'Error sending SOS', error: error.message });
@@ -404,6 +423,30 @@ app.get('/sos', authenticateToken, requirePolice, async (req, res) => {
     } catch (error) {
         console.error('LOG: SOS Fetch Error:', error);
         res.status(500).json({ message: 'Error fetching SOS alerts', error: error.message });
+    }
+});
+
+app.put('/sos/:id/status', authenticateToken, requirePolice, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!['pending', 'acknowledged', 'resolved'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid status value' });
+        }
+
+        const sos = await Sos.findById(id);
+        if (!sos) {
+            return res.status(404).json({ message: 'SOS alert not found' });
+        }
+
+        sos.status = status;
+        await sos.save();
+
+        res.status(200).json({ message: 'SOS status updated', sos });
+    } catch (error) {
+        console.error('LOG: SOS Status Update Error:', error);
+        res.status(500).json({ message: 'Error updating SOS status', error: error.message });
     }
 });
 

@@ -1,13 +1,15 @@
-# Task Progress: Add 20+ Police Stations for Citizen Dashboard Visibility ✅
+# Capstone Project TODOs
 
-## Steps from Approved Plan:
-### 1. [x] Create backend/scripts/addExtraStations.js (new file with 25 new stations)
-### 2. [x] Update backend/routes/stations.js (appended 25 new stations to fallbackStations)
-### 3. [ ] User runs: cd backend && node scripts/addExtraStations.js
-### 4. [ ] Restart backend server
-### 5. [ ] Test: Open frontend citizen dashboard (UserLanding/CrimeMap), toggle stations, pan/zoom India - verify ~more 20+ clickable markers visible
-### 6. [ ] Verify DB/API count increased (e.g. curl http://localhost:3001/api/stations?bbox=8,68,37,97&amp;limit=50)
+## Backdrop-Filter Safari Fix Plan (Approved ✅)
 
-**Ready for user to run script and test!**
+### Steps:
+- [x] User approved detailed edit plan for frontend/src/index.css
+- [ ] Execute 9 parallel edit_file operations to add -webkit-backdrop-filter prefixes
+- [ ] Verify edits succeeded (no failures from tool results)
+- [ ] Test changes: cd frontend && npm start (or equivalent), check Safari compatibility
+- [ ] Run linting if applicable: npm run lint
+- [ ] Update any TODOs or notes if issues found
+- [ ] attempt_completion with demo command
 
-
+## Previous Tasks
+*(auto-generated from existing TODO.md content if any)*

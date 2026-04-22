@@ -20,6 +20,7 @@ function UserLanding() {
   const [adminId, setAdminId] = useState('');
   const [adminPass, setAdminPass] = useState('');
   const [adminError, setAdminError] = useState('');
+  const [cursorLocation, setCursorLocation] = useState(null); // Track cursor position from map
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -71,17 +72,11 @@ function UserLanding() {
 
   const handleConfirmSos = () => {
     setShowSosModal(false);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          sendSos(position.coords.latitude, position.coords.longitude);
-        },
-        () => {
-          sendSos();
-        }
-      );
+    // Use cursor location from map instead of geolocation
+    if (cursorLocation) {
+      sendSos(cursorLocation[0], cursorLocation[1]);
     } else {
-      sendSos();
+      setFeedback('Location marker not available. Please move your cursor over the map.');
     }
   };
 
@@ -172,7 +167,7 @@ function UserLanding() {
 
       {/* Interactive Crime Map */}
       <main className="map-area">
-        <CrimeMap onDangerZone={handleDangerZone} isAdminMode={isAdminMode} />
+        <CrimeMap onDangerZone={handleDangerZone} isAdminMode={isAdminMode} onCursorLocationChange={setCursorLocation} />
       </main>
 
       {/* SOS Button */}
