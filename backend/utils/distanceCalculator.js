@@ -46,6 +46,28 @@ function getFallbackStations() {
     { osm_id: 1001, name: 'Tughlak Road Police Station', lat: 28.6075, lon: 77.2300 },
     { osm_id: 1002, name: 'Lodhi Colony Police Station', lat: 28.5860, lon: 77.2220 },
     { osm_id: 1003, name: 'Saket Police Station', lat: 28.5140, lon: 77.2050 },
+    { osm_id: 1004, name: 'Dadar Police Station', lat: 19.0194, lon: 72.8406 },
+    { osm_id: 1005, name: 'Bandra Police Station', lat: 19.0660, lon: 72.8280 },
+    { osm_id: 1006, name: 'MG Road Police Station', lat: 12.9750, lon: 77.6040 },
+    { osm_id: 1007, name: 'Jayanagar Police Station', lat: 12.9240, lon: 77.5840 },
+    { osm_id: 1008, name: 'Esplanade Police Station', lat: 22.5650, lon: 88.3520 },
+    { osm_id: 1009, name: 'Park Street Police Station', lat: 22.5480, lon: 88.3520 },
+    { osm_id: 1010, name: 'Egmore Police Station', lat: 13.0790, lon: 80.2590 },
+    { osm_id: 1011, name: 'Triplicane Police Station', lat: 13.0620, lon: 80.2750 },
+    { osm_id: 1012, name: 'Abids Police Station', lat: 17.3850, lon: 78.4740 },
+    { osm_id: 1013, name: 'Secunderabad Police Station', lat: 17.4350, lon: 78.4940 },
+    { osm_id: 1014, name: 'Maninagar Police Station', lat: 22.9990, lon: 72.6040 },
+    { osm_id: 1015, name: 'Navrangpura Police Station', lat: 23.0400, lon: 72.5460 },
+    { osm_id: 1016, name: 'Shivajinagar Police Station', lat: 18.5390, lon: 73.8450 },
+    { osm_id: 1017, name: 'Kothrud Police Station', lat: 18.5050, lon: 73.8060 },
+    { osm_id: 1018, name: 'Wall City Police Station', lat: 26.9190, lon: 75.8270 },
+    { osm_id: 1019, name: 'Vaishali Nagar Police Station', lat: 26.9670, lon: 75.7970 },
+    { osm_id: 1020, name: 'Hazratganj Police Station', lat: 26.8490, lon: 80.9430 },
+    { osm_id: 1021, name: 'Gomti Nagar Police Station', lat: 26.8760, lon: 81.0230 },
+    { osm_id: 1022, name: 'Indira Nagar Police Station', lat: 26.8700, lon: 80.9830 },
+    { osm_id: 1023, name: 'Kanpur Cantt Police Station', lat: 26.4490, lon: 80.3340 },
+    { osm_id: 1024, name: 'Govind Nagar Police Station', lat: 26.4230, lon: 80.3230 },
+    { osm_id: 1025, name: 'Patna City Police Station', lat: 25.6180, lon: 85.1350 }
   ];
 }
 
