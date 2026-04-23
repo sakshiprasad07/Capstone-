@@ -5,3 +5,4 @@ RUN npm install
 COPY . .
 EXPOSE 5000
 CMD ["node", "server.js"]
+ENV MONGO_URI=${MONGO_URI}
