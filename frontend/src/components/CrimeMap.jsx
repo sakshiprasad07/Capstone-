@@ -163,7 +163,7 @@ function PoliceStationsLayer({ enabled, sosAlerts = [] }) {
 function HeatmapLayer({ enabled }) {
   const map = useMap();
   const heatLayerRef = useRef(null);
-
+const API = import.meta.env.VITE_API_URL;
   useEffect(() => {
     if (!enabled) {
       if (heatLayerRef.current) {
@@ -175,7 +175,7 @@ function HeatmapLayer({ enabled }) {
 
     const fetchCrimeData = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/crimes');
+        const response = await fetch(`${API}/api/crimes`);
         const data = await response.json();
         const crimes = data.crimes || [];
 
@@ -307,7 +307,7 @@ export default function CrimeMap({ sosAlerts = [], isAdminMode = false, onCursor
     setSosSuccess(false);
 
     try {
-      const response = await fetch('http://localhost:5000/sos', {
+      const response = await fetch(`${API}/sos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
