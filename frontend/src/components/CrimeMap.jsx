@@ -4,49 +4,53 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.heat';
 
-<<<<<<< HEAD
-
-
-// ─── Heatmap layer ─────────────────────────────────────────────────────────────
-function HeatmapLayer({ points }) {
+// ─── User Location Marker ──────────────────────────────────────────────────────
+function UserLocationMarker({ position, onPositionChange }) {
   const map = useMap();
-  const heatLayerRef = useRef(null);
 
   useEffect(() => {
-    if (!map || points.length === 0) return;
-    if (typeof L.heatLayer !== 'function') {
-      console.warn('leaflet.heat not loaded — heatmap unavailable');
-      return;
+    if (position && map) {
+      map.setView(position, map.getZoom());
     }
+  }, [position, map]);
 
-    if (heatLayerRef.current) {
-      map.removeLayer(heatLayerRef.current);
-      heatLayerRef.current = null;
-    }
+  if (!position) return null;
 
-    // radius 25 + minOpacity 0.35 keeps the heatmap visible at national zoom (5)
-    heatLayerRef.current = L.heatLayer(points, {
-      radius: 25,
-      blur: 20,
-      maxZoom: 18,
-      minOpacity: 0.35,
-      max: 1.0,
-      gradient: {
-        0.2: '#3b82f6',
-        0.5: '#10b981',
-        0.75: '#eab308',
-        1.0: '#ef4444',
-      },
-    // ...existing code...
+  const icon = L.divIcon({
+    className: 'user-location-icon',
+    html: `<div style="width:16px;height:16px;background:#3b82f6;border:3px solid white;border-radius:50%;box-shadow:0 0 12px rgba(59,130,246,0.6);"></div>`,
+    iconSize: [16, 16],
+    iconAnchor: [8, 8]
+  });
+
+  return (
+    <Marker
+      position={position}
+      icon={icon}
+    >
+      <Popup>
+        <div style={{ fontWeight: 600 }}>Your Location</div>
+        <div style={{ fontSize: '12px', marginTop: 4 }}>
+          {position[0].toFixed(5)}, {position[1].toFixed(5)}
+        </div>
+      </Popup>
+    </Marker>
+  );
+}
+
+// ─── SOS Markers ───────────────────────────────────────────────────────────────
+function SosMarkers({ sosAlerts = [] }) {
+  if (!sosAlerts || sosAlerts.length === 0) return null;
+
   return (
     <>
       {sosAlerts.map((alert) => {
         const id = alert._id || alert.id;
         if (!alert.latitude || !alert.longitude) return null;
-        
+
         const statusColor = alert.status === 'pending' ? '#ef4444' :
                            alert.status === 'acknowledged' ? '#eab308' : '#10b981';
-                           
+
         return (
           <CircleMarker
             key={id}
@@ -102,12 +106,10 @@ function SimulatedSosMarker({ position, onMove }) {
   );
 }
 
-
 // ─── Police stations layer ──────────────────────────────────────────────────
 function PoliceStationsLayer({ enabled, sosAlerts = [] }) {
   const map = useMap();
   const markersRef = useRef([]);
-  const pendingFetch = useRef(null);
 
   // Identify stations with active SOS alerts
   const assignedStationIds = sosAlerts
@@ -117,7 +119,7 @@ function PoliceStationsLayer({ enabled, sosAlerts = [] }) {
   const getPoliceIcon = (stationId) => {
     const isAssigned = assignedStationIds.includes(stationId);
     const blinkStyle = isAssigned ? 'animation: blink 1s infinite;' : '';
-    
+
     return L.divIcon({
       className: 'police-pin',
       html: `<div style="width:12px;height:12px;background:${isAssigned ? '#ef4444' : '#38bdf8'};border:3px solid white;border-radius:50%;box-shadow:0 0 12px rgba(${isAssigned ? '239,68,68' : '56,189,248'},0.5);${blinkStyle}"></div>`,
@@ -213,29 +215,26 @@ function HeatmapLayer({ enabled }) {
   return null;
 }
 
-// ─── Main CrimeMap (SIMULATOR ENABLED) ──────────────────────────────────────────
-export default function CrimeMap({ sosAlerts = [], isAdminMode = false, onCursorLocationChange = null, showHeatmap = false }) {
-  const INDIA_CENTER = [22.9074, 79.1469];
-  
-  const [showStations, setShowStations] = useState(true);
-  const [internalShowHeatmap, setInternalShowHeatmap] = useState(showHeatmap);
-  const [userPos, setUserPos] = useState(null);
-  const [victimPos, setVictimPos] = useState(INDIA_CENTER);
-  const [sosLoading, setSosLoading] = useState(false);
-  const [sosSuccess, setSosSuccess] = useState(false);
-  const mapRef = useRef(null);
+// ─── Map View Controller (handles programmatic panning) ───────────────────────
+function MapController({ userPos, isAdminMode, victimPos }) {
+  const map = useMap();
+  const hasCenteredOnUser = useRef(false);
 
-  // Sync internal state with prop
   useEffect(() => {
-    setInternalShowHeatmap(showHeatmap);
-  }, [showHeatmap]);
-
-  // Recenter map on Admin toggle
-  useEffect(() => {
-    if (isAdminMode && victimPos && mapRef.current) {
-      mapRef.current.setView(victimPos, 13);
+    if (userPos && !hasCenteredOnUser.current) {
+      map.setView(userPos, 13);
+      hasCenteredOnUser.current = true;
     }
-  }, [isAdminMode]);
+  }, [userPos, map]);
+
+  useEffect(() => {
+    if (isAdminMode && victimPos) {
+      map.setView(victimPos, 13);
+    }
+  }, [isAdminMode, victimPos, map]);
+
+  return null;
+}
 
 // ─── Map interaction handler (Admin Only) ───────────────────────────────────
 function MapClickHandler({ isAdminMode, onLocationSelect }) {
@@ -249,32 +248,22 @@ function MapClickHandler({ isAdminMode, onLocationSelect }) {
   return null;
 }
 
-<<<<<<< HEAD
-// ─── Main CrimeMap component ───────────────────────────────────────────────────
-export default function CrimeMap() {
-  const [crimes, setCrimes]               = useState([]);
-  const [userPos, setUserPos]             = useState(null);
-  const [locationError, setLocationError] = useState(null);
-  const [loading, setLoading]             = useState(true);
-  const autoCentered                      = useRef(false);
+// ─── Main CrimeMap (SIMULATOR ENABLED) ──────────────────────────────────────────
+export default function CrimeMap({ sosAlerts = [], isAdminMode = false, onCursorLocationChange = null, showHeatmap = false }) {
+  const INDIA_CENTER = [22.9074, 79.1469];
 
-  const isAdmin = localStorage.getItem('role') === 'admin';
+  const [showStations, setShowStations] = useState(true);
+  const [internalShowHeatmap, setInternalShowHeatmap] = useState(showHeatmap);
+  const [userPos, setUserPos] = useState(null);
+  const [victimPos, setVictimPos] = useState(INDIA_CENTER);
+  const [sosLoading, setSosLoading] = useState(false);
+  const [sosSuccess, setSosSuccess] = useState(false);
 
-  // Fetch crime data once
+  // Sync internal state with prop
   useEffect(() => {
-    fetch('/api/crimes')
-      .then(res => res.json())
-      .then(data => {
-        const list = data.crimes || [];
-        setCrimes(list);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Failed to fetch crimes:', err);
-        setLoading(false);
-      });
-  }, []);
-=======
+    setInternalShowHeatmap(showHeatmap);
+  }, [showHeatmap]);
+
   // Restore automatic user geolocation
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -282,16 +271,10 @@ export default function CrimeMap() {
         (position) => {
           const { latitude, longitude } = position.coords;
           const newPos = [latitude, longitude];
-          
+
           setUserPos(newPos);
           if (onCursorLocationChange) {
             onCursorLocationChange(newPos);
-          }
->>>>>>> bugssss
-
-          // Center map on user location
-          if (mapRef.current) {
-            mapRef.current.setView(newPos, 13);
           }
           console.log("Automatic geolocation sync successful:", newPos);
         },
@@ -303,7 +286,7 @@ export default function CrimeMap() {
             if (onCursorLocationChange) onCursorLocationChange(INDIA_CENTER);
           }
         },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
       console.warn("Geolocation not supported by this browser.");
@@ -335,23 +318,6 @@ export default function CrimeMap() {
         })
       });
 
-<<<<<<< HEAD
-    return () => navigator.geolocation.clearWatch(watchId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
-
-
-
-  // Build heatmap points weighted by crime domain
-  const heatPoints = crimes.map(c => [
-    c.latitude,
-    c.longitude,
-    c.crimeDomain === 'Violent Crime' ? 1.0 :
-    c.crimeDomain === 'Fire Accident' ? 0.7 : 0.5,
-  ]);
-
-  const INDIA_CENTER = [22.9074, 79.1469];
-=======
       if (response.ok) {
         setSosSuccess(true);
         setTimeout(() => setSosSuccess(false), 4000);
@@ -366,7 +332,6 @@ export default function CrimeMap() {
       setSosLoading(false);
     }
   };
->>>>>>> bugssss
 
   return (
     <div className="crime-map-wrapper" style={{ position: 'relative', height: '100%', width: '100%', background: '#020617' }}>
@@ -375,19 +340,19 @@ export default function CrimeMap() {
         zoom={5}
         style={{ width: '100%', height: '100%' }}
         zoomControl={false}
-        ref={mapRef}
       >
         <TileLayer
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; CARTO'
         />
 
+        <MapController userPos={userPos} isAdminMode={isAdminMode} victimPos={victimPos} />
         {userPos && <UserLocationMarker position={userPos} onPositionChange={setUserPos} />}
         <SosMarkers sosAlerts={sosAlerts} />
         <PoliceStationsLayer enabled={showStations} />
         <HeatmapLayer enabled={internalShowHeatmap} />
         <MapClickHandler isAdminMode={isAdminMode} onLocationSelect={setVictimPos} />
-        
+
         {isAdminMode && (
           <>
             <SimulatedSosMarker position={victimPos} onMove={setVictimPos} />
@@ -407,7 +372,7 @@ export default function CrimeMap() {
           <p style={{ margin: '0 0 20px 0', fontSize: '13px', opacity: 0.8, lineHeight: 1.5 }}>
             Click the map or drag the orange marker to set the simulation origin. Triggering an SOS will alert all active dispatch units.
           </p>
-          
+
           <div style={{ fontSize: '12px', marginBottom: '15px', color: '#94a3b8', fontStyle: 'italic' }}>
             Origin: {victimPos?.[0].toFixed(5)}, {victimPos?.[1].toFixed(5)}
           </div>

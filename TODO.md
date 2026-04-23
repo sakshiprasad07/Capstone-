@@ -1,15 +1,17 @@
-# Capstone Project TODOs
+# Capstone Project TODOs - Frontend Fix
 
-## Backdrop-Filter Safari Fix Plan (Approved ✅)
+## Current Task: Fix Broken Frontend
+
+### Root Causes Identified:
+1. CrimeMap.jsx had unresolved Git merge conflicts (`<<<<<<< HEAD`, `=======`, `>>>>>>> bugssss`)
+2. UserLanding.jsx had unresolved merge conflicts, duplicate JSX, and missing imports
+3. UserLocationMarker component referenced but didn't exist
+4. UserLanding.jsx referenced undefined DangerBanner, handleDangerZone, handleDismissDanger
+5. Stray file `const [heatPoints, setHeatPoints] = useS.js` in project root
 
 ### Steps:
-- [x] User approved detailed edit plan for frontend/src/index.css
-- [ ] Execute 9 parallel edit_file operations to add -webkit-backdrop-filter prefixes
-- [ ] Verify edits succeeded (no failures from tool results)
-- [ ] Test changes: cd frontend && npm start (or equivalent), check Safari compatibility
-- [ ] Run linting if applicable: npm run lint
-- [ ] Update any TODOs or notes if issues found
-- [ ] attempt_completion with demo command
+- [x] Fix CrimeMap.jsx - remove merge conflicts, combine correct code, add missing UserLocationMarker
+- [x] Fix UserLanding.jsx - remove merge conflicts, remove duplicates, fix imports, remove undefined references
+- [x] Delete stray file from project root
+- [x] Test frontend build: `cd frontend && npm run build` - PASSED
 
-## Previous Tasks
-*(auto-generated from existing TODO.md content if any)*

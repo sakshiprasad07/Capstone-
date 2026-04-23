@@ -485,6 +485,35 @@ app.put('/reports/:id/status', authenticateToken, requirePolice, async (req, res
     }
 });
 
+// DELETE routes for SOS and Reports
+app.delete('/sos/:id', authenticateToken, requirePolice, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const sos = await Sos.findByIdAndDelete(id);
+        if (!sos) {
+            return res.status(404).json({ message: 'SOS alert not found' });
+        }
+        res.status(200).json({ message: 'SOS alert deleted successfully' });
+    } catch (error) {
+        console.error('LOG: SOS Delete Error:', error);
+        res.status(500).json({ message: 'Error deleting SOS alert', error: error.message });
+    }
+});
+
+app.delete('/reports/:id', authenticateToken, requirePolice, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const report = await CrimeReport.findByIdAndDelete(id);
+        if (!report) {
+            return res.status(404).json({ message: 'Crime report not found' });
+        }
+        res.status(200).json({ message: 'Crime report deleted successfully' });
+    } catch (error) {
+        console.error('LOG: Report Delete Error:', error);
+        res.status(500).json({ message: 'Error deleting crime report', error: error.message });
+    }
+});
+
 // Serve static frontend files (after all API routes)
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 

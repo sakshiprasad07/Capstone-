@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-
+import CrimeMap from './CrimeMap';
 
 const API_URL = 'http://localhost:5000';
 
@@ -13,10 +13,6 @@ function UserLanding() {
   const [reportTime, setReportTime] = useState('');
   const [reportDetails, setReportDetails] = useState('');
   const [feedback, setFeedback] = useState('');
-<<<<<<< HEAD
-
-=======
-  const [dangerInfo, setDangerInfo] = useState(null);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [showAdminAuth, setShowAdminAuth] = useState(false);
   const [adminId, setAdminId] = useState('');
@@ -24,7 +20,7 @@ function UserLanding() {
   const [adminError, setAdminError] = useState('');
   const [cursorLocation, setCursorLocation] = useState(null); // Track cursor position from map
   const [useCurrentLocation, setUseCurrentLocation] = useState(false);
->>>>>>> bugssss
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -127,7 +123,7 @@ function UserLanding() {
     e.preventDefault();
 
     // Input validation
-    if (!reportType || reportType === 'Theft') {
+    if (!reportType) {
       setFeedback('Please select a crime type.');
       return;
     }
@@ -154,8 +150,6 @@ function UserLanding() {
 
     sendReport();
   };
-
-
 
   return (
     <div className="dashboard-container">
@@ -188,19 +182,9 @@ function UserLanding() {
         </div>
       </nav>
 
-      {/* Danger Zone Banner */}
-      <DangerBanner danger={dangerInfo} onDismiss={handleDismissDanger} />
-
       {/* Interactive Crime Map */}
       <main className="map-area">
-        <CrimeMap onDangerZone={handleDangerZone} isAdminMode={isAdminMode} onCursorLocationChange={setCursorLocation} />
-      {/* Danger Zone Banner */}
-      <DangerBanner danger={dangerInfo} onDismiss={handleDismissDanger} />
-
-      {/* Interactive Crime Map */}
-      <main className="map-area">
-        <CrimeMap onDangerZone={handleDangerZone} isAdminMode={isAdminMode} onCursorLocationChange={setCursorLocation} />
->>>>>>> bugssss
+        <CrimeMap isAdminMode={isAdminMode} onCursorLocationChange={setCursorLocation} />
       </main>
 
       {/* SOS Button - Hidden in Admin Simulator Mode */}
@@ -407,3 +391,4 @@ function UserLanding() {
 }
 
 export default UserLanding;
+

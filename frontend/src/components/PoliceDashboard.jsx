@@ -202,6 +202,40 @@ function PoliceDashboard() {
     }
   };
 
+  // Delete alert (SOS or Report)
+  const handleDeleteAlert = async (alert) => {
+    const alertId = alert._id || alert.id;
+    const token = localStorage.getItem('token');
+    const endpoint = alert.type === 'sos' ? `/sos/${alertId}` : `/reports/${alertId}`;
+
+    if (!window.confirm(`Are you sure you want to delete this ${alert.type === 'sos' ? 'SOS alert' : 'crime report'}?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        if (alert.type === 'sos') {
+          setSosAlerts(prev => prev.filter(a => (a._id || a.id) !== alertId));
+        } else {
+          setReportAlerts(prev => prev.filter(a => (a._id || a.id) !== alertId));
+        }
+        setErrorMessage('');
+      } else {
+        setErrorMessage(data.message || 'Unable to delete alert');
+      }
+    } catch (error) {
+      console.error('Delete alert error:', error);
+      setErrorMessage('Connection error while deleting alert');
+    }
+  };
+
   // FIX: renderAlerts now only takes `alerts` — setSosAlerts/setReportAlerts are
   // captured from component scope, not passed as params (was the root cause of broken buttons)
   const renderAlerts = (alerts) => {
@@ -302,6 +336,29 @@ function PoliceDashboard() {
                 ✅ Incident Resolved
               </span>
             )}
+            <button
+              className="action-btn delete"
+              onClick={() => handleDeleteAlert(alert)}
+              style={{
+                background: 'transparent',
+                border: '1px solid rgba(239,68,68,0.4)',
+                color: '#ef4444',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                fontSize: '0.78rem',
+                cursor: 'pointer',
+                marginLeft: 'auto',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(239,68,68,0.1)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'transparent';
+              }}
+            >
+              🗑️ Delete
+            </button>
           </div>
         </div>
       );
