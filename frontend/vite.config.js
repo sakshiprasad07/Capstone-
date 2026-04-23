@@ -20,6 +20,7 @@ export default defineConfig({
       '/police/login': 'http://localhost:5000',
       '/auth': 'http://localhost:5000',
       '/sos': 'http://localhost:5000',
+      '/reports': 'http://localhost:5000',
     }
   }
 })

@@ -2,7 +2,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "3000:3000"
+      - "3000:80"
     depends_on:
       - backend
     environment:
@@ -13,16 +13,17 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - MONGO_URI=mongodb://mongo:27017/capstone
+      - MONGO_URI=mongodb://host.docker.internal:27017/capstone
       - PORT=5000
       - NODE_ENV=production
     depends_on:
       - mongo
+    restart: on-failure
 
   mongo:
     image: mongo
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
       - mongo_data:/data/db
 

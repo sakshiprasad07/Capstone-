@@ -1,28 +1,12 @@
-# Use official Node image for building
-FROM node:18 AS builder
-
+FROM node:18-alpine AS builder
 WORKDIR /app
-
-# Copy frontend files
+COPY package*.json ./
+RUN npm install
 COPY . .
+RUN npm run build
 
-# Run build step
-RUN npm install && npm run build
-
-# Use Nginx to serve static files
 FROM nginx:alpine
-
-# Remove default nginx config
-RUN rm /etc/nginx/conf.d/default.conf
-
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
-
-# Copy frontend files to nginx
 COPY --from=builder /app/dist /usr/share/nginx/html
-
-EXPOSE 3000
-
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
-
 CMD ["nginx", "-g", "daemon off;"]
