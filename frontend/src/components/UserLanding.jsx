@@ -13,7 +13,18 @@ function UserLanding() {
   const [reportTime, setReportTime] = useState('');
   const [reportDetails, setReportDetails] = useState('');
   const [feedback, setFeedback] = useState('');
+<<<<<<< HEAD
 
+=======
+  const [dangerInfo, setDangerInfo] = useState(null);
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [showAdminAuth, setShowAdminAuth] = useState(false);
+  const [adminId, setAdminId] = useState('');
+  const [adminPass, setAdminPass] = useState('');
+  const [adminError, setAdminError] = useState('');
+  const [cursorLocation, setCursorLocation] = useState(null); // Track cursor position from map
+  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
+>>>>>>> bugssss
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -65,17 +76,11 @@ function UserLanding() {
 
   const handleConfirmSos = () => {
     setShowSosModal(false);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          sendSos(position.coords.latitude, position.coords.longitude);
-        },
-        () => {
-          sendSos();
-        }
-      );
+    // Prioritize automatic or cursor-selected location from the interactive map
+    if (cursorLocation && cursorLocation.length === 2 && !isNaN(cursorLocation[0]) && !isNaN(cursorLocation[1])) {
+      sendSos(cursorLocation[0], cursorLocation[1]);
     } else {
-      sendSos();
+      setFeedback('GPS location not detected yet. Please ensure location access is enabled or click on the map.');
     }
   };
 
@@ -107,6 +112,7 @@ function UserLanding() {
         setReportLocation('');
         setReportTime('');
         setReportDetails('');
+        setUseCurrentLocation(false);
         setTimeout(() => setFeedback(''), 5000);
       } else {
         setFeedback(data.message || 'Unable to send crime report.');
@@ -119,6 +125,33 @@ function UserLanding() {
 
   const handleSubmitReport = (e) => {
     e.preventDefault();
+
+    // Input validation
+    if (!reportType || reportType === 'Theft') {
+      setFeedback('Please select a crime type.');
+      return;
+    }
+
+    if (!reportLocation || reportLocation.trim().length < 3) {
+      setFeedback('Please provide a detailed location (at least 3 characters).');
+      return;
+    }
+
+    if (!reportTime || reportTime.trim().length < 3) {
+      setFeedback('Please provide incident time details.');
+      return;
+    }
+
+    if (!reportDetails || reportDetails.trim().length < 10) {
+      setFeedback('Please provide more details about the incident (at least 10 characters).');
+      return;
+    }
+
+    if (useCurrentLocation && (!cursorLocation || cursorLocation.length !== 2)) {
+      setFeedback('Location coordinates not available. Please try again.');
+      return;
+    }
+
     sendReport();
   };
 
@@ -133,6 +166,19 @@ function UserLanding() {
           </h2>
         </div>
         <div className="nav-links">
+          <button
+            type="button"
+            className="report-btn"
+            onClick={() => isAdminMode ? setIsAdminMode(false) : setShowAdminAuth(true)}
+            style={{
+              background: isAdminMode ? 'rgba(249, 115, 22, 0.2)' : 'rgba(255,255,255,0.05)',
+              color: isAdminMode ? '#fb923c' : 'var(--text-gray)',
+              border: isAdminMode ? '1px solid #fb923c' : '1px solid rgba(255,255,255,0.1)',
+              marginRight: '10px'
+            }}
+          >
+            {isAdminMode ? 'Disable Simulator' : 'Admin Simulator'}
+          </button>
           <button type="button" className="report-btn" onClick={() => setShowReportModal(true)}>
             Report a Crime
           </button>
@@ -142,25 +188,34 @@ function UserLanding() {
         </div>
       </nav>
 
-      {/* Featured Section (Removed Mapping) */}
-      <main className="feature-placeholder" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-dark)' }}>
-        <div style={{ textAlign: 'center', opacity: 0.5 }}>
-           <h3 style={{ color: 'var(--text-gray)' }}>Public Map View Disabled</h3>
-           <p>We are reimagining this space. Stay tuned for new features.</p>
-        </div>
+      {/* Danger Zone Banner */}
+      <DangerBanner danger={dangerInfo} onDismiss={handleDismissDanger} />
+
+      {/* Interactive Crime Map */}
+      <main className="map-area">
+        <CrimeMap onDangerZone={handleDangerZone} isAdminMode={isAdminMode} onCursorLocationChange={setCursorLocation} />
+      {/* Danger Zone Banner */}
+      <DangerBanner danger={dangerInfo} onDismiss={handleDismissDanger} />
+
+      {/* Interactive Crime Map */}
+      <main className="map-area">
+        <CrimeMap onDangerZone={handleDangerZone} isAdminMode={isAdminMode} onCursorLocationChange={setCursorLocation} />
+>>>>>>> bugssss
       </main>
 
-      {/* SOS Button */}
-      <button
-        className="sos-btn"
-        onClick={() => setShowSosModal(true)}
-        style={{
-          background: sosStatus === 'sent' ? '#059669' : '',
-          animation: sosStatus === 'sent' ? 'none' : ''
-        }}
-      >
-        {sosStatus === 'sent' ? 'SENT' : 'SOS'}
-      </button>
+      {/* SOS Button - Hidden in Admin Simulator Mode */}
+      {!isAdminMode && (
+        <button
+          className="sos-btn"
+          onClick={() => setShowSosModal(true)}
+          style={{
+            background: sosStatus === 'sent' ? '#059669' : '',
+            animation: sosStatus === 'sent' ? 'none' : ''
+          }}
+        >
+          {sosStatus === 'sent' ? 'SENT' : 'SOS'}
+        </button>
+      )}
 
       {feedback && <div className="feedback-message">{feedback}</div>}
 
@@ -220,7 +275,29 @@ function UserLanding() {
                 onChange={(e) => setReportLocation(e.target.value)}
                 placeholder="Street, landmark, or neighborhood"
                 required
+                disabled={useCurrentLocation}
+                style={{ opacity: useCurrentLocation ? 0.7 : 1 }}
               />
+              <div style={{ display: 'flex', alignItems: 'center', marginTop: '10px', gap: '8px' }}>
+                <input
+                  type="checkbox"
+                  id="useCurrentLocation"
+                  checked={useCurrentLocation}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setUseCurrentLocation(checked);
+                    if (checked && cursorLocation) {
+                      setReportLocation(`${cursorLocation[0].toFixed(5)}, ${cursorLocation[1].toFixed(5)}`);
+                    } else if (!checked) {
+                      setReportLocation('');
+                    }
+                  }}
+                  style={{ width: 'auto', margin: 0 }}
+                />
+                <label htmlFor="useCurrentLocation" style={{ fontSize: '0.85rem', cursor: 'pointer', margin: 0, color: 'var(--text-gray)' }}>
+                  Use my current GPS location
+                </label>
+              </div>
             </div>
             <div className="input-group">
               <label htmlFor="crimeTime">When did you see it?</label>
@@ -249,6 +326,80 @@ function UserLanding() {
               <button className="modal-btn confirm-sos" type="submit">Submit Report</button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Admin Auth Modal (Simulator Access) */}
+      {showAdminAuth && (
+        <div className="modal-overlay" style={{ display: 'flex', zIndex: 2000 }}>
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ color: '#fb923c' }}>🔒</span> Admin Access Required
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-gray)', marginBottom: '1.5rem' }}>
+              Please enter your administrator bypass credentials to enable simulation tools on the public portal.
+            </p>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (adminId.toLowerCase() === 'police_admin' && adminPass === 'ADMIN777') {
+                setIsAdminMode(true);
+                setShowAdminAuth(false);
+                setAdminError('');
+                setAdminPass('');
+              } else {
+                setAdminError('Invalid Admin ID or Password');
+              }
+            }}>
+              <div className="input-group" style={{ marginBottom: '1rem' }}>
+                <label>Admin ID</label>
+                <input
+                  type="text"
+                  value={adminId}
+                  onChange={(e) => setAdminId(e.target.value)}
+                  placeholder="Enter Admin ID"
+                  required
+                  style={{ width: '100%', padding: '12px', background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}
+                />
+              </div>
+              <div className="input-group" style={{ marginBottom: '1.5rem' }}>
+                <label>Bypass Password</label>
+                <input
+                  type="password"
+                  value={adminPass}
+                  onChange={(e) => setAdminPass(e.target.value)}
+                  placeholder="Enter Password"
+                  required
+                  style={{ width: '100%', padding: '12px', background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'white' }}
+                />
+              </div>
+              {adminError && (
+                <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                  {adminError}
+                </div>
+              )}
+              <div className="modal-actions" style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  type="button"
+                  className="modal-btn cancel-sos"
+                  onClick={() => {
+                    setShowAdminAuth(false);
+                    setAdminError('');
+                    setAdminPass('');
+                  }}
+                  style={{ flex: 1, padding: '12px', borderRadius: '8px', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="modal-btn confirm-sos"
+                  style={{ flex: 2, background: '#fb923c', color: 'white', padding: '12px', borderRadius: '8px', border: 'none', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Verify Access
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

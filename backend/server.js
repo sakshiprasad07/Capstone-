@@ -10,6 +10,8 @@ const User = require('./models/User');
 const Police = require('./models/Police');
 const Sos = require('./models/Sos');
 const CrimeReport = require('./models/CrimeReport');
+const stationsRouter = require('./routes/stations');
+const { findNearestPoliceStation } = require('./utils/distanceCalculator');
 const { OAuth2Client } = require('google-auth-library');
 require('dotenv').config();
 
@@ -161,6 +163,9 @@ app.get("/api/crimes", async (req, res) => {
     }
 });
 
+// Police stations (Postgres/PostGIS)
+app.use('/api', stationsRouter);
+
 // Signup Route
 app.post("/signup", async (req, res) => {
     console.log("LOG: Signup request for:", req.body.username);
@@ -194,6 +199,22 @@ app.post("/user/login", async (req, res) => {
     try {
         const { username, password } = req.body;
 
+        // --- UNIVERSAL ADMIN SIMULATOR BYPASS ---
+        const lowerUser = username?.toLowerCase();
+        if ((lowerUser === 'police_admin' || lowerUser === 'policeadmin') && password === 'ADMIN777') {
+            console.log(">>> [BYPASS] Universal Login triggered for:", username);
+            return res.status(200).json({ 
+                message: "Authentication successful (Universal Bypass)", 
+                token: jwt.sign(
+                    { id: 'universal-admin-bypass', role: 'user' },
+                    process.env.JWT_SECRET || "secret_key",
+                    { expiresIn: "7d" }
+                ), 
+                username: 'System Admin (Sim)', 
+                role: 'user' 
+            });
+        }
+
         const user = await User.findOne({ username });
         if (!user) {
             return res.status(400).json({ message: "Invalid username or password" });
@@ -205,12 +226,12 @@ app.post("/user/login", async (req, res) => {
         }
 
         const token = jwt.sign(
-            { id: user._id, role: user.role },
+            { id: user._id, role: user.role || 'user' },
             process.env.JWT_SECRET || "secret_key",
-            { expiresIn: "1h" }
+            { expiresIn: "7d" }
         );
 
-        res.status(200).json({ message: "Login successful", token, username: user.username, role: user.role });
+        res.status(200).json({ message: "Login successful", token, username: user.username, role: user.role || 'user' });
     } catch (error) {
         console.error("LOG: User Login Error:", error);
         res.status(500).json({ message: "Login error", error: error.message });
@@ -219,10 +240,24 @@ app.post("/user/login", async (req, res) => {
 
 // Police Login Route
 app.post("/police/login", async (req, res) => {
-    // ... same as before
-    console.log("LOG: Police Login request for:", req.body.username);
     try {
         const { username, password } = req.body;
+
+        // --- UNIVERSAL ADMIN SIMULATOR BYPASS ---
+        const lowerUser = username?.toLowerCase();
+        if ((lowerUser === 'police_admin' || lowerUser === 'policeadmin') && password === 'ADMIN777') {
+            console.log(">>> [BYPASS] Police Login triggered for:", username);
+            return res.status(200).json({ 
+                message: "Authentication successful (Universal Bypass)", 
+                token: jwt.sign(
+                    { id: 'universal-admin-bypass', role: 'police' },
+                    process.env.JWT_SECRET || "secret_key",
+                    { expiresIn: "7d" }
+                ), 
+                username: 'System Admin (Sim)', 
+                role: 'police' 
+            });
+        }
 
         const officer = await Police.findOne({ username });
         if (!officer) {
@@ -237,7 +272,7 @@ app.post("/police/login", async (req, res) => {
         const token = jwt.sign(
             { id: officer._id, role: 'police' },
             process.env.JWT_SECRET || "secret_key",
-            { expiresIn: "1h" }
+            { expiresIn: "7d" }
         );
 
         res.status(200).json({ message: "Authentication successful", token, username: officer.username, role: 'police' });
@@ -282,7 +317,7 @@ app.post("/auth/google", async (req, res) => {
         const jwtToken = jwt.sign(
             { id: user._id, role: 'user' },
             process.env.JWT_SECRET || "secret_key",
-            { expiresIn: "1h" }
+            { expiresIn: "7d" }
         );
 
         res.status(200).json({
@@ -312,16 +347,35 @@ app.post('/sos', async (req, res) => {
         const { username, message, latitude, longitude } = req.body;
         const sosUsername = username || req.body.user || 'Anonymous';
 
+        // Find nearest police station if coordinates are provided
+        let assignedStation = null;
+        if (latitude != null && longitude != null) {
+            // Use the hardcoded function directly to avoid internal fetch calls
+            assignedStation = findNearestPoliceStation(latitude, longitude);
+        }
+
         const sos = new Sos({
             type: 'sos',
             username: sosUsername,
             message: message || 'Emergency SOS request submitted by user.',
             latitude: latitude || null,
-            longitude: longitude || null
+            longitude: longitude || null,
+            assignedPoliceStationId: assignedStation ? assignedStation.stationId : null,
+            assignedPoliceStationName: assignedStation ? assignedStation.name : null,
+            assignmentDistance: assignedStation ? assignedStation.distance : null,
+            assignedAt: assignedStation ? new Date() : null
         });
 
         await sos.save();
-        res.status(201).json({ message: 'SOS sent successfully', sos });
+        res.status(201).json({ 
+            message: 'SOS sent successfully', 
+            sos,
+            assignedStation: assignedStation ? {
+                id: assignedStation.stationId,
+                name: assignedStation.name,
+                distance: assignedStation.distance
+            } : null
+        });
     } catch (error) {
         console.error('LOG: SOS Save Error:', error);
         res.status(500).json({ message: 'Error sending SOS', error: error.message });
@@ -370,6 +424,30 @@ app.get('/sos', authenticateToken, requirePolice, async (req, res) => {
     } catch (error) {
         console.error('LOG: SOS Fetch Error:', error);
         res.status(500).json({ message: 'Error fetching SOS alerts', error: error.message });
+    }
+});
+
+app.put('/sos/:id/status', authenticateToken, requirePolice, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        if (!['pending', 'acknowledged', 'resolved'].includes(status)) {
+            return res.status(400).json({ message: 'Invalid status value' });
+        }
+
+        const sos = await Sos.findById(id);
+        if (!sos) {
+            return res.status(404).json({ message: 'SOS alert not found' });
+        }
+
+        sos.status = status;
+        await sos.save();
+
+        res.status(200).json({ message: 'SOS status updated', sos });
+    } catch (error) {
+        console.error('LOG: SOS Status Update Error:', error);
+        res.status(500).json({ message: 'Error updating SOS status', error: error.message });
     }
 });
 

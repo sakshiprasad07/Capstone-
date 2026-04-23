@@ -4,14 +4,15 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node ./node_modules/vite/bin/vite.js --configLoader runner",
+    "build": "node ./node_modules/vite/bin/vite.js build --configLoader runner",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "node ./node_modules/vite/bin/vite.js preview --configLoader runner"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
     "leaflet.heat": "^0.2.0",
+    "leaflet.markercluster": "^1.5.3",
     "lucide-react": "^0.475.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
