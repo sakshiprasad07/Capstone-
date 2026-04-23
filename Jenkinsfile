@@ -2,22 +2,21 @@ pipeline {
     agent any
 
     stages {
-
         stage('Checkout Code') {
             steps {
                 checkout scm
             }
         }
 
-        stage('Build Docker Images') {
+        stage('Stop Old Containers') {
             steps {
-                bat 'docker-compose build'
+                bat 'docker-compose down --remove-orphans'
             }
         }
 
-        stage('Stop Old Containers') {
+        stage('Build Docker Images') {
             steps {
-                bat 'docker-compose down'
+                bat 'docker-compose build'
             }
         }
 
